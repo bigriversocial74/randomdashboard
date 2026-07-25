@@ -23,7 +23,7 @@ env:
   TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
-  recover-source:
+  diagnose-archive:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repair branch
@@ -32,82 +32,55 @@ jobs:
           fetch-depth: 0
           ref: ${{ env.TARGET_BRANCH }}
 
-      - name: Reconstruct, validate, and install source
+      - name: Record archive diagnostics
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
 
-          mapfile -t chunks < <(find .bootstrap -maxdepth 1 -type f -name 'chunk_*' | sort)
-          chunk_count="${#chunks[@]}"
+          find .bootstrap -maxdepth 1 -type f -name 'chunk_*' | sort > /tmp/chunk-list.txt
+          chunk_count="$(wc -l < /tmp/chunk-list.txt | tr -d ' ')"
           encoded_bytes=0
-          for chunk in "${chunks[@]}"; do
-            encoded_bytes=$((encoded_bytes + $(wc -c < "$chunk")))
-          done
-
-          decode_status=1
-          xz_status=1
-          archive_bytes=0
-          archive_sha='not-created'
+          while IFS= read -r chunk; do
+            [ -n "$chunk" ] || continue
+            bytes="$(wc -c < "$chunk" | tr -d ' ')"
+            encoded_bytes=$((encoded_bytes + bytes))
+          done < /tmp/chunk-list.txt
 
           if [ "$chunk_count" -gt 0 ]; then
-            cat "${chunks[@]}" | base64 --decode > /tmp/phase2-source.tar.xz
+            xargs cat < /tmp/chunk-list.txt | base64 --decode > /tmp/phase2-source.tar.xz 2> /tmp/base64-error.txt
             decode_status=$?
+          else
+            : > /tmp/phase2-source.tar.xz
+            echo 'No archive chunks found.' > /tmp/base64-error.txt
+            decode_status=1
           fi
 
-          if [ -f /tmp/phase2-source.tar.xz ]; then
-            archive_bytes="$(wc -c < /tmp/phase2-source.tar.xz)"
-            archive_sha="$(sha256sum /tmp/phase2-source.tar.xz | cut -d' ' -f1)"
-            xz --test /tmp/phase2-source.tar.xz
-            xz_status=$?
-          fi
+          archive_bytes="$(wc -c < /tmp/phase2-source.tar.xz | tr -d ' ')"
+          archive_sha="$(sha256sum /tmp/phase2-source.tar.xz | cut -d' ' -f1)"
+          xz --test /tmp/phase2-source.tar.xz 2> /tmp/xz-error.txt
+          xz_status=$?
 
-          if [ "$decode_status" -eq 0 ] && [ "$xz_status" -eq 0 ]; then
-            rm -rf /tmp/phase2-source
-            mkdir -p /tmp/phase2-source
-            tar -xJf /tmp/phase2-source.tar.xz -C /tmp/phase2-source
-
-            source_root=''
-            if [ -f /tmp/phase2-source/app/index.php ] && [ -d /tmp/phase2-source/database ]; then
-              source_root='/tmp/phase2-source'
-            else
-              while IFS= read -r candidate; do
-                if [ -f "$candidate/app/index.php" ] && [ -d "$candidate/database" ]; then
-                  source_root="$candidate"
-                  break
-                fi
-              done < <(find /tmp/phase2-source -mindepth 1 -maxdepth 3 -type d | sort)
-            fi
-
-            if [ -n "$source_root" ]; then
-              find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-              cp -a "$source_root"/. .
-              test -f app/index.php
-              test -d database
-
-              git config user.name 'github-actions[bot]'
-              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-              git add -A
-              git commit -m 'Add complete Phase 2 production source baseline'
-              git push origin "HEAD:${TARGET_BRANCH}"
-              exit 0
-            fi
-          fi
-
-          cat > BOOTSTRAP_DIAGNOSTIC.txt <<EOF
-          Phase 2 source archive diagnostic
-          chunk_count=$chunk_count
-          encoded_bytes=$encoded_bytes
-          decode_status=$decode_status
-          archive_bytes=$archive_bytes
-          archive_sha256=$archive_sha
-          xz_status=$xz_status
-          expected_local_archive_bytes=186928
-          expected_local_archive_sha256=812abd67628146b63b71b7ad443365622b69be32b590ccc3fd40b8a960405877
-          result=stored archive is incomplete, corrupt, or lacks the expected source root
-          EOF
+          {
+            echo 'Phase 2 source archive diagnostic'
+            echo "chunk_count=$chunk_count"
+            echo "encoded_bytes=$encoded_bytes"
+            echo "decode_status=$decode_status"
+            echo "archive_bytes=$archive_bytes"
+            echo "archive_sha256=$archive_sha"
+            echo "xz_status=$xz_status"
+            echo 'expected_local_archive_bytes=186928'
+            echo 'expected_local_archive_sha256=812abd67628146b63b71b7ad443365622b69be32b590ccc3fd40b8a960405877'
+            echo 'base64_error_begin'
+            cat /tmp/base64-error.txt
+            echo 'base64_error_end'
+            echo 'xz_error_begin'
+            cat /tmp/xz-error.txt
+            echo 'xz_error_end'
+          } > BOOTSTRAP_DIAGNOSTIC.txt
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add BOOTSTRAP_DIAGNOSTIC.txt
-          git commit -m 'Record Phase 2 bootstrap archive diagnostic'
+          git commit -m 'Record Phase 2 bootstrap archive diagnostic' || true
           git push origin "HEAD:${TARGET_BRANCH}"
+          exit 0
