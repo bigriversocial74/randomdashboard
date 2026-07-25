@@ -1,42 +1,17 @@
-name: Bootstrap Phase 2 source
+name: Bootstrap Phase 2 source (disabled)
 
 on:
-  push:
-    branches:
-      - phase-2-production-data-integration
-    paths:
-      - '.bootstrap/READY'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  unpack-source:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out branch
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify and unpack validated source
-        shell: bash
+      - name: Bootstrap disabled
         run: |
-          set -euo pipefail
-          cat .bootstrap/chunk_* | base64 --decode > /tmp/phase2-source.tar.xz
-          echo '2faf09a6f1de04c37322b14e834c8e431f873ad513eb922d6eea68e6d96c38be  /tmp/phase2-source.tar.xz' | sha256sum --check --strict
-          mkdir -p /tmp/phase2-source
-          tar -xJf /tmp/phase2-source.tar.xz -C /tmp/phase2-source
-
-      - name: Replace bootstrap branch with source tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .bootstrap -exec rm -rf {} +
-          cp -a /tmp/phase2-source/. .
-          rm -rf .bootstrap
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Add complete Phase 2 production data integration baseline'
-          git push origin HEAD:phase-2-production-data-integration
+          echo 'Automatic source bootstrap is disabled.'
+          echo 'The prior encoded archive payload was incomplete and must not be retried.'
+          echo 'Push the validated Phase 2 source through a normal Git client before enabling CI.'
