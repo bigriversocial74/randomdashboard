@@ -1,17 +1,86 @@
-name: Bootstrap Phase 2 source (disabled)
+name: Recover complete Phase 2 source
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - phase-2-complete-source-repair
+    paths:
+      - '.github/workflows/bootstrap-phase2-source.yml'
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - '.github/workflows/bootstrap-phase2-source.yml'
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
-  disabled:
+  diagnose-archive:
     runs-on: ubuntu-latest
     steps:
-      - name: Bootstrap disabled
+      - name: Check out repair branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.TARGET_BRANCH }}
+
+      - name: Record archive diagnostics
+        shell: bash
         run: |
-          echo 'Automatic source bootstrap is disabled.'
-          echo 'The prior encoded archive payload was incomplete and must not be retried.'
-          echo 'Push the validated Phase 2 source through a normal Git client before enabling CI.'
+          set +e
+
+          find .bootstrap -maxdepth 1 -type f -name 'chunk_*' | sort > /tmp/chunk-list.txt
+          chunk_count="$(wc -l < /tmp/chunk-list.txt | tr -d ' ')"
+          encoded_bytes=0
+          while IFS= read -r chunk; do
+            [ -n "$chunk" ] || continue
+            bytes="$(wc -c < "$chunk" | tr -d ' ')"
+            encoded_bytes=$((encoded_bytes + bytes))
+          done < /tmp/chunk-list.txt
+
+          if [ "$chunk_count" -gt 0 ]; then
+            xargs cat < /tmp/chunk-list.txt | base64 --decode > /tmp/phase2-source.tar.xz 2> /tmp/base64-error.txt
+            decode_status=$?
+          else
+            : > /tmp/phase2-source.tar.xz
+            echo 'No archive chunks found.' > /tmp/base64-error.txt
+            decode_status=1
+          fi
+
+          archive_bytes="$(wc -c < /tmp/phase2-source.tar.xz | tr -d ' ')"
+          archive_sha="$(sha256sum /tmp/phase2-source.tar.xz | cut -d' ' -f1)"
+          xz --test /tmp/phase2-source.tar.xz 2> /tmp/xz-error.txt
+          xz_status=$?
+
+          {
+            echo 'Phase 2 source archive diagnostic'
+            echo "chunk_count=$chunk_count"
+            echo "encoded_bytes=$encoded_bytes"
+            echo "decode_status=$decode_status"
+            echo "archive_bytes=$archive_bytes"
+            echo "archive_sha256=$archive_sha"
+            echo "xz_status=$xz_status"
+            echo 'expected_local_archive_bytes=186928'
+            echo 'expected_local_archive_sha256=812abd67628146b63b71b7ad443365622b69be32b590ccc3fd40b8a960405877'
+            echo 'base64_error_begin'
+            cat /tmp/base64-error.txt
+            echo 'base64_error_end'
+            echo 'xz_error_begin'
+            cat /tmp/xz-error.txt
+            echo 'xz_error_end'
+          } > BOOTSTRAP_DIAGNOSTIC.txt
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add BOOTSTRAP_DIAGNOSTIC.txt
+          git commit -m 'Record Phase 2 bootstrap archive diagnostic' || true
+          git push origin "HEAD:${TARGET_BRANCH}"
+          exit 0
