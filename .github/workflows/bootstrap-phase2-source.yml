@@ -1,87 +1,17 @@
-name: Bootstrap Phase 2 source
+name: Bootstrap Phase 2 source (disabled)
 
 on:
-  push:
-    branches:
-      - phase-2-production-data-integration
-    paths:
-      - '.bootstrap/READY'
-      - '.github/workflows/bootstrap-phase2-source.yml'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  unpack-source:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out branch
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify and unpack source archive
-        shell: bash
+      - name: Bootstrap disabled
         run: |
-          set -euo pipefail
-
-          test -f .bootstrap/READY
-          mapfile -t chunks < <(find .bootstrap -maxdepth 1 -type f -name 'chunk_*' | sort)
-          test "${#chunks[@]}" -ge 1
-
-          cat "${chunks[@]}" | base64 --decode > /tmp/phase2-source.tar.xz
-          test -s /tmp/phase2-source.tar.xz
-
-          echo "Archive chunks: ${#chunks[@]}"
-          echo "Archive bytes: $(wc -c < /tmp/phase2-source.tar.xz)"
-          echo "Archive SHA-256: $(sha256sum /tmp/phase2-source.tar.xz | cut -d' ' -f1)"
-
-          xz --test /tmp/phase2-source.tar.xz
-          tar -tJf /tmp/phase2-source.tar.xz > /tmp/phase2-source-files.txt
-          test -s /tmp/phase2-source-files.txt
-
-          rm -rf /tmp/phase2-source
-          mkdir -p /tmp/phase2-source
-          tar -xJf /tmp/phase2-source.tar.xz -C /tmp/phase2-source
-
-          source_root='/tmp/phase2-source'
-          if ! test -f "$source_root/README.md" || ! test -d "$source_root/app" || ! test -d "$source_root/database"; then
-            source_root=''
-            while IFS= read -r candidate; do
-              if test -f "$candidate/README.md" && test -d "$candidate/app" && test -d "$candidate/database"; then
-                source_root="$candidate"
-                break
-              fi
-            done < <(find /tmp/phase2-source -mindepth 1 -maxdepth 2 -type d | sort)
-          fi
-
-          if test -z "$source_root"; then
-            echo 'Unable to locate the Phase 2 repository root after extraction.' >&2
-            echo 'Top archive entries:' >&2
-            sed -n '1,80p' /tmp/phase2-source-files.txt >&2
-            echo 'Extracted directories:' >&2
-            find /tmp/phase2-source -maxdepth 3 -type d | sort >&2
-            exit 1
-          fi
-
-          echo "Resolved source root: $source_root"
-          echo "PHASE2_SOURCE_ROOT=$source_root" >> "$GITHUB_ENV"
-
-      - name: Replace bootstrap files with source tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${PHASE2_SOURCE_ROOT:-}"
-          test -f "$PHASE2_SOURCE_ROOT/README.md"
-          test -d "$PHASE2_SOURCE_ROOT/app"
-          test -d "$PHASE2_SOURCE_ROOT/database"
-
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a "$PHASE2_SOURCE_ROOT"/. .
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git diff --cached --quiet && { echo 'No source changes were produced.'; exit 1; }
-          git commit -m 'Add complete Phase 2 production data integration baseline'
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo 'Automatic source bootstrap is disabled.'
+          echo 'The prior encoded archive payload was incomplete and must not be retried.'
+          echo 'Push the validated Phase 2 source through a normal Git client before enabling CI.'
