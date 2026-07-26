@@ -12,11 +12,11 @@ require_once $root.'/includes/app/scenario_planning.php';
 $simulation=scenario_calculate(scenario_default_inputs());
 foreach(['net_impact','gross_impact','risk_score','risk_level','cases','alternatives','critical_items'] as $field){if(!array_key_exists($field,$simulation)){fwrite(STDERR,"Simulation missing {$field}.\n");exit(1);}}
 $priceOnly=scenario_calculate(array_replace(scenario_default_inputs(),['scenario_type'=>'price_increase']));
-if($priceOnly['active_assumptions']['demand_change_pct']!==0.0||$priceOnly['active_assumptions']['lead_time_delay_days']!==0||$priceOnly['active_assumptions']['disruption_pct']!==0.0){fwrite(STDERR,"Scenario type activation failed.\n");exit(1);}
+if((float)$priceOnly['active_assumptions']['demand_change_pct']!==0.0||(int)$priceOnly['active_assumptions']['lead_time_delay_days']!==0||(float)$priceOnly['active_assumptions']['disruption_pct']!==0.0){fwrite(STDERR,"Scenario type activation failed.\n");exit(1);}
 if(count($simulation['cases'])!==3){fwrite(STDERR,"Expected best, expected, and worst cases.\n");exit(1);}
 if($simulation['cases']['best']['net_impact']>$simulation['cases']['worst']['net_impact']){fwrite(STDERR,"Scenario case ordering is invalid.\n");exit(1);}
 $clamped=scenario_normalize_inputs(['price_change_pct'=>999,'demand_change_pct'=>-999,'disruption_pct'=>999,'lead_time_delay_days'=>999]);
-if($clamped['price_change_pct']!==250.0||$clamped['demand_change_pct']!==-80.0||$clamped['disruption_pct']!==100.0||$clamped['lead_time_delay_days']!==365){fwrite(STDERR,"Scenario input constraints failed.\n");exit(1);}
+if((float)$clamped['price_change_pct']!==250.0||(float)$clamped['demand_change_pct']!==-80.0||(float)$clamped['disruption_pct']!==100.0||(int)$clamped['lead_time_delay_days']!==365){fwrite(STDERR,"Scenario input constraints failed.\n");exit(1);}
 $record=scenario_save_record([
 'id'=>null,'company_id'=>null,'title'=>'Quality scenario','scenario_type'=>$simulation['inputs']['scenario_type'],'supplier_id'=>1,'category_id'=>1,
 'inputs'=>$simulation['inputs'],'result_summary'=>['net_impact'=>$simulation['net_impact'],'risk_score'=>$simulation['risk_score'],'risk_level'=>$simulation['risk_level']],
