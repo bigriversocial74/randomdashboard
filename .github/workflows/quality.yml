@@ -1,0 +1,153 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  php-and-security:
+    name: PHP ${{ matrix.php }} quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run repository quality gates
+        run: tests/run-quality.sh
+
+  mysql-8-authentication:
+    name: MySQL 8 authentication integration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import production schema
+        run: mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/gruber_ai_procurement_single_install_v3.sql
+      - name: Run authentication integration tests
+        run: |
+          cp -a . /tmp/gruber-auth-test
+          cat > /tmp/gruber-auth-test/config.php <<'PHP'
+          <?php
+          return [
+              'app' => [
+                  'name' => 'Gruber Procurement Intelligence',
+                  'environment' => 'testing',
+                  'timezone' => 'America/Phoenix',
+                  'support_email' => 'quality@gruber.test',
+                  'demo_enabled' => true,
+              ],
+              'database' => [
+                  'host' => '127.0.0.1',
+                  'port' => 3306,
+                  'name' => 'gruber_test',
+                  'username' => 'root',
+                  'password' => 'root',
+                  'charset' => 'utf8mb4',
+              ],
+              'security' => [
+                  'session_lifetime_minutes' => 120,
+                  'session_absolute_lifetime_minutes' => 720,
+                  'password_reset_lifetime_minutes' => 60,
+                  'max_login_attempts' => 5,
+                  'lockout_minutes' => 15,
+                  'trusted_proxies' => [],
+              ],
+          ];
+          PHP
+          cd /tmp/gruber-auth-test
+          php tests/auth_integration.php
+
+  mariadb-authentication:
+    name: MariaDB 10.11 authentication integration
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - name: Install database client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import production schema
+        run: mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/gruber_ai_procurement_single_install_v3.sql
+      - name: Run authentication integration tests
+        run: |
+          cp -a . /tmp/gruber-auth-test
+          cat > /tmp/gruber-auth-test/config.php <<'PHP'
+          <?php
+          return [
+              'app' => [
+                  'name' => 'Gruber Procurement Intelligence',
+                  'environment' => 'testing',
+                  'timezone' => 'America/Phoenix',
+                  'support_email' => 'quality@gruber.test',
+                  'demo_enabled' => true,
+              ],
+              'database' => [
+                  'host' => '127.0.0.1',
+                  'port' => 3306,
+                  'name' => 'gruber_test',
+                  'username' => 'root',
+                  'password' => 'root',
+                  'charset' => 'utf8mb4',
+              ],
+              'security' => [
+                  'session_lifetime_minutes' => 120,
+                  'session_absolute_lifetime_minutes' => 720,
+                  'password_reset_lifetime_minutes' => 60,
+                  'max_login_attempts' => 5,
+                  'lockout_minutes' => 15,
+                  'trusted_proxies' => [],
+              ],
+          ];
+          PHP
+          cd /tmp/gruber-auth-test
+          php tests/auth_integration.php
