@@ -23,6 +23,8 @@ if(query_string('export')==='csv'&&$selected)execution_export_csv($selected,$ver
 
 $agentPrompt='Review controlled procurement execution '.($selected['execution_number']??'blueprint').' for '.($plan['plan_number']??'the selected mitigation plan').'. Compare planned and actual recovery, implementation cost, risk reduction, lead-time improvement, inventory exposure, redirected purchase-order value, approval evidence, blockers, verification quality, and rollback readiness.';
 $headerActions='<a class="button ghost" href="'.h(app_url('mitigations.php'.($plan?'?id='.(int)$plan['id']:''))).'">Mitigation Plan</a>';
+$performanceSupplierId=(int)($action['supplier_id']??0)?:((int)($plan['supplier_id']??0));
+if($selected&&$performanceSupplierId>0)$headerActions.='<a class="button ghost" href="'.h(app_url('performance.php?execution_id='.(int)$selected['id'].'&supplier_id='.$performanceSupplierId)).'">Monitor Supplier</a>';
 if($selected&&can('reports.export'))$headerActions.='<a class="button secondary" href="'.h(app_url('executions.php?id='.(int)$selected['id'].'&export=csv')).'">Export Execution</a>';
 $headerActions.='<a class="button primary" href="'.h(app_url('agent.php?prompt='.rawurlencode($agentPrompt))).'">Analyze in Agent</a>';
 render_app_start('Execution & Recovery Verification','executions','Procurement change control','Execute approved mitigation actions, preserve change evidence, verify actual recovery, and retain rollback control.',$headerActions);
