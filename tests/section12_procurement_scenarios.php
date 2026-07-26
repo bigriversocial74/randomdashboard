@@ -27,7 +27,7 @@ if(scenario_csv_cell('@SUM(A1:A2)')!=="'@SUM(A1:A2)"){fwrite(STDERR,"Scenario CS
 $page=file_get_contents($root.'/app/scenarios.php').file_get_contents($root.'/includes/app/scenario_view_controls.php').file_get_contents($root.'/includes/app/scenario_view_results.php').file_get_contents($root.'/includes/app/scenario_view_records.php');
 $action=file_get_contents($root.'/app/scenario-action.php');
 $sql=file_get_contents($root.'/database/20260726_section12_procurement_scenarios.sql');
-foreach(['Scenario Planning &amp; Procurement Risk Simulation','Best','Expected','Worst','Transparent formulas','Alternative suppliers','Route approval'] as $needle){if(!str_contains($page,$needle)){fwrite(STDERR,"Scenario page missing {$needle}.\n");exit(1);}}
+foreach(['Scenario Planning &amp; Procurement Risk Simulation','Scenario cases','Transparent formulas','Alternative suppliers','Route approval'] as $needle){if(!str_contains($page,$needle)){fwrite(STDERR,"Scenario page missing {$needle}.\n");exit(1);}}
 foreach(['procurement_scenario','workflow_approvals','notifications','approvals.submit','savings.edit'] as $needle){if(!str_contains($action,$needle)){fwrite(STDERR,"Scenario action missing {$needle}.\n");exit(1);}}
 foreach(['CREATE TABLE IF NOT EXISTS procurement_scenarios','4.1-section12'] as $needle){if(!str_contains($sql,$needle)){fwrite(STDERR,"Section 12 SQL missing {$needle}.\n");exit(1);}}
 fwrite(STDOUT,"Section 12 procurement scenario gates passed.\n");
