@@ -1,0 +1,81 @@
+name: Section 12 Procurement Risk Simulation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  section-12-quality:
+    name: Section 12 PHP quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run cumulative and Section 12 gates
+        run: tests/run-quality.sh
+
+  mysql-8-section-12:
+    name: MySQL 8 Section 12 migrations
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install database client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and scenarios
+        run: |
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/gruber_ai_procurement_single_install_v3.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section11_supplier_comparison.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section12_procurement_scenarios.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12')" | grep -qx '2'
+
+  mariadb-section-12:
+    name: MariaDB 10.11 Section 12 migrations
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install database client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and scenarios
+        run: |
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/gruber_ai_procurement_single_install_v3.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section11_supplier_comparison.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section12_procurement_scenarios.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12')" | grep -qx '2'
