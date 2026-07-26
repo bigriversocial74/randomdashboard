@@ -1153,13 +1153,13 @@ VALUES
 ('platform.name', JSON_QUOTE('Gruber Procurement Intelligence'), 'Public platform name'),
 ('platform.default_timezone', JSON_QUOTE('America/Phoenix'), 'Default application timezone'),
 ('platform.currency', JSON_QUOTE('USD'), 'Default currency'),
-('security.session_lifetime_minutes', CAST(120 AS JSON), 'Default session lifetime'),
-('security.password_reset_lifetime_minutes', CAST(60 AS JSON), 'Password reset token lifetime'),
-('security.max_login_attempts', CAST(5 AS JSON), 'Failed login threshold'),
-('security.lockout_minutes', CAST(15 AS JSON), 'Login lockout duration'),
-('demo.available', CAST(TRUE AS JSON), 'Whether intentional Demo Mode entry is available'),
-('agent.enabled', CAST(TRUE AS JSON), 'Whether Agent Workspace is available'),
-('agent.approved_data_only', CAST(TRUE AS JSON), 'Restrict Agent Workspace to approved evidence')
+('security.session_lifetime_minutes', '120', 'Default session lifetime'),
+('security.password_reset_lifetime_minutes', '60', 'Password reset token lifetime'),
+('security.max_login_attempts', '5', 'Failed login threshold'),
+('security.lockout_minutes', '15', 'Login lockout duration'),
+('demo.available', 'true', 'Whether intentional Demo Mode entry is available'),
+('agent.enabled', 'true', 'Whether Agent Workspace is available'),
+('agent.approved_data_only', 'true', 'Restrict Agent Workspace to approved evidence')
 ON DUPLICATE KEY UPDATE description = VALUES(description);
 
 SET FOREIGN_KEY_CHECKS = 1;
