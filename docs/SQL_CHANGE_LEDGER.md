@@ -36,10 +36,24 @@ Deferred migration:
 - Required import order: Version 3 schema, Section 11 migration, then Section 12 migration.
 - Existing installation behavior before import: simulation and protected CSV export remain available; Production Data scenario save and approval routing are intentionally blocked until the table exists.
 
+## Section 13 — Mitigation Action Plans & Supplier Contingency Management
+
+Deferred migration:
+
+`database/20260726_section13_mitigation_action_plans.sql`
+
+- Dependencies: corrected Version 3 schema, Section 11 migration, and Section 12 migration.
+- Purpose: creates `procurement_mitigation_plans` and `procurement_mitigation_actions` for governed contingency triggers, scenario linkage, supplier/category scope, action ownership, due dates, execution state, cost, recovery value, service-risk reduction, readiness, approval reference, activation evidence, and containment tracking.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record; the Section 13 workflow imports this migration twice on both database engines.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Section 11 migration, Section 12 migration, then Section 13 migration.
+- Existing installation behavior before import: scenario-to-plan analysis remains available in Demo Mode; Production Data plan/action saving, approval routing, and activation are intentionally blocked until both Section 13 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.

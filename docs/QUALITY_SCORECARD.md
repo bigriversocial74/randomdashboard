@@ -14,6 +14,7 @@
 | 10 | Delivery, CI, and end-to-end readiness | 5.6/10 | 10/10 | None |
 | 11 | Supplier comparison and strategic sourcing | 4.6/10 | 10/10 | Deferred migration |
 | 12 | Scenario planning and procurement risk simulation | 3.9/10 | 10/10 | Deferred migration |
+| 13 | Mitigation action plans and supplier contingency management | 3.5/10 | 10/10 | Deferred migration |
 
 ## Release decision
 

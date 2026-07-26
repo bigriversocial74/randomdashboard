@@ -30,6 +30,7 @@ $agentPrompt = 'Simulate procurement risk for ' . ($supplier['name'] ?? ($catego
     . '% active demand change, ' . $active['lead_time_delay_days'] . ' active delay days, and '
     . $active['disruption_pct'] . '% active disruption. Explain mitigation priorities and evidence gaps.';
 $actions = '<a class="button ghost" href="'.h(app_url('sourcing.php')).'">Supplier Comparison</a>';
+$actions .= '<a class="button secondary" href="'.h(app_url('mitigations.php'.($savedRecord?'?scenario_id='.(int)$savedRecord['id']:''))).'">Build Mitigation Plan</a>';
 if (can('reports.export')) {
     $actions .= '<a class="button secondary" href="'.h(app_url('scenarios.php?'.http_build_query([...$simulation['inputs'],'export'=>'csv']))).'">Export Scenario</a>';
 }
