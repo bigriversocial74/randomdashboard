@@ -1,0 +1,95 @@
+name: Section 15 Supplier Performance and Continuous Improvement
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  section-15-quality:
+    name: PHP ${{ matrix.php }} cumulative quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run cumulative Sections 1-15 gates
+        run: tests/run-quality.sh
+
+  mysql-8-section-15:
+    name: MySQL 8 cumulative migrations
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install database client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 15 twice
+        run: |
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/gruber_ai_procurement_single_install_v3.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section11_supplier_comparison.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section12_procurement_scenarios.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section13_mitigation_action_plans.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section14_execution_recovery_verification.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section15_supplier_performance_improvement.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section15_supplier_performance_improvement.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12','4.2-section13','4.3-section14','4.4-section15')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('supplier_performance_reviews','supplier_corrective_action_plans','supplier_performance_events')" | grep -qx '3'
+
+  mariadb-section-15:
+    name: MariaDB 10.11 cumulative migrations
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install database client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 15 twice
+        run: |
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/gruber_ai_procurement_single_install_v3.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section11_supplier_comparison.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section12_procurement_scenarios.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section13_mitigation_action_plans.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section14_execution_recovery_verification.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section15_supplier_performance_improvement.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < database/20260726_section15_supplier_performance_improvement.sql
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12','4.2-section13','4.3-section14','4.4-section15')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('supplier_performance_reviews','supplier_corrective_action_plans','supplier_performance_events')" | grep -qx '3'
