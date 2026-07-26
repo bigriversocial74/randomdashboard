@@ -49,11 +49,24 @@ Deferred migration:
 - Required import order: Version 3 schema, Section 11 migration, Section 12 migration, then Section 13 migration.
 - Existing installation behavior before import: scenario-to-plan analysis remains available in Demo Mode; Production Data plan/action saving, approval routing, and activation are intentionally blocked until both Section 13 tables exist.
 
+## Section 14 — Mitigation Execution, Recovery Verification & Procurement Change Control
+
+Deferred migration:
+
+`database/20260726_section14_execution_recovery_verification.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11, Section 12, and Section 13 migrations.
+- Purpose: creates `procurement_mitigation_executions`, `procurement_mitigation_execution_events`, and `procurement_recovery_verifications` for controlled operational changes, immutable status evidence, before/target/actual snapshots, approval references, rollback plans, independent verification, and planned-versus-actual recovery measures.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record; the Section 14 workflow imports this migration twice on both database engines.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, then Section 14 migration.
+- Existing installation behavior before import: Demo Mode execution and recovery verification remain available; Production Data execution, event, verification, approval, rollback, and containment-verification writes are intentionally blocked until all three Section 14 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
-- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 order.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.

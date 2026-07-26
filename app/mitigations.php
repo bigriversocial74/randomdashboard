@@ -31,6 +31,7 @@ $supplier=$simulation['baseline']['supplier'];
 $category=data_find('categories',(int)$simulation['baseline']['category_id']);
 $agentPrompt='Review mitigation plan '.($plan['plan_number']??'draft').' for '.($supplier['name']??($category['name']??'the active procurement scenario')).'. Evaluate trigger quality, action ownership, alternate supplier readiness, recovery value, residual risk, blockers, due dates, and approval evidence. Recommend the next governed actions.';
 $headerActions='<a class="button ghost" href="'.h(app_url('scenarios.php'.($scenario?'?id='.(int)$scenario['id']:''))).'">Risk Simulation</a>';
+if($savedPlan)$headerActions.='<a class="button secondary" href="'.h(app_url('executions.php?plan_id='.(int)$savedPlan['id'])).'">Execution Control</a>';
 if($savedPlan&&can('reports.export'))$headerActions.='<a class="button secondary" href="'.h(app_url('mitigations.php?id='.(int)$savedPlan['id'].'&export=csv')).'">Export Plan</a>';
 $headerActions.='<a class="button primary" href="'.h(app_url('agent.php?prompt='.rawurlencode($agentPrompt))).'">Analyze in Agent</a>';
 render_app_start('Mitigation Action Plans','mitigations','Supplier contingency management','Turn procurement-risk scenarios into owned, measurable, approval-controlled contingency plans.',$headerActions);
