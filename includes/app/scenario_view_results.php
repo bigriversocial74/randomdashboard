@@ -1,0 +1,16 @@
+<section class="case-grid" aria-label="Scenario cases">
+<?php foreach($simulation['cases'] as $case=>$values): ?>
+<article class="case-card <?= $case==='expected'?'expected':'' ?>"><span class="eyebrow"><?= h(ucfirst($case)) ?> case</span><strong><?= compact_money($values['net_impact']) ?></strong><small>Net annual impact</small><div class="case-metrics"><span>Gross impact</span><span><?= compact_money($values['gross_impact']) ?></span><span>Risk score</span><span><?= number_format((float)$values['risk_score'],1) ?></span><span>Service risk</span><span><?= number_format((float)$values['service_risk'],1) ?></span></div></article>
+<?php endforeach; ?>
+</section>
+
+<section class="panel"><header class="panel-head"><div><span class="eyebrow">Transparent formulas</span><h2>Impact calculation</h2><p>The simulation exposes each component rather than hiding the recommendation behind a single score.</p></div><span class="panel-meta">Baseline spend <?= compact_money($simulation['baseline']['annual_spend']) ?></span></header><div class="formula-grid">
+<?php foreach(['price_impact'=>'Price impact','demand_impact'=>'Demand impact','delay_expedite'=>'Delay / expedite cost','disruption_exposure'=>'Open commitment exposure','savings_offset'=>'Savings offset','transfer_avoidance'=>'Inventory transfer avoidance','net_impact'=>'Expected net impact'] as $key=>$label): ?>
+<article class="formula-card"><span><?= h($label) ?></span><b><?= compact_money($simulation[$key]) ?></b><small><?php echo match($key){'price_impact'=>'Annual spend × active price change','demand_impact'=>'Annual spend × active demand change','delay_expedite'=>'Open PO value × active delay/disruption factor','disruption_exposure'=>'Open PO value × active disruption probability','savings_offset'=>'Gross impact × savings offset','transfer_avoidance'=>'Visible inventory value × transfer recovery',default=>'Gross impact − offsets − transfer avoidance'}; ?></small></article>
+<?php endforeach; ?>
+</div></section>
+
+<section class="risk-grid">
+<article class="risk-panel"><span class="eyebrow">Operational exposure</span><h2>Critical items</h2><?php foreach($simulation['critical_items'] as $row): ?><div class="risk-row"><div><strong><?= h($row['item']['item_number']) ?></strong><small><?= h($row['item']['description']) ?></small></div><div><?= badge($row['risk']) ?><small><?= number_format((float)$row['available'],1) ?> available</small></div></div><?php endforeach; ?><?php if(!$simulation['critical_items']) render_empty_state('No affected items','The selected supplier/category has no visible purchase-order item evidence.'); ?></article>
+<article class="risk-panel"><span class="eyebrow">Mitigation pathways</span><h2>Alternative suppliers</h2><?php foreach($simulation['alternatives'] as $row): ?><div class="risk-row"><div><strong><?= h($row['supplier']['name']) ?></strong><small><?= h($row['supplier']['payment_terms']) ?> · <?= h(status_label($row['supplier']['risk'])) ?> risk</small></div><div><span class="score-pill"><?= number_format((float)$row['readiness'],1) ?></span><small>readiness</small></div></div><?php endforeach; ?><?php if(!$simulation['alternatives']) render_empty_state('No direct alternatives','Broaden the category or compare suppliers in Strategic Sourcing.'); ?></article>
+</section>
