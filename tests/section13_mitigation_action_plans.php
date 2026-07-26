@@ -8,6 +8,7 @@ $_SERVER['HTTP_USER_AGENT']='Gruber Section 13 quality test';
 require $root.'/includes/app/bootstrap.php';
 if(!demo_start_session(1)){fwrite(STDERR,"Could not start demo session.\n");exit(1);}
 require_once $root.'/includes/app/mitigation_planning.php';
+require_once $root.'/includes/app/mitigation_status.php';
 
 $scenario=scenario_find_record(1);
 $blueprint=mitigation_default_blueprint($scenario);
@@ -32,6 +33,12 @@ if($metrics['residual_risk_score']>$metrics['source_risk_score']){fwrite(STDERR,
 $first=mitigation_find_action((int)$actions[0]['id']);
 $updated=mitigation_save_action(['id'=>$first['id'],'status'=>'in_progress','priority'=>'critical','owner_id'=>1,'due_date'=>date('Y-m-d',strtotime('+5 days')),'readiness_pct'=>75,'notes'=>'Quality execution note']);
 if($updated['status']!=='in_progress'||(float)$updated['readiness_pct']!==75.0){fwrite(STDERR,"Mitigation action update failed.\n");exit(1);}
+$activeRecord=array_replace($saved,['status'=>'active','approval_id'=>987]);
+if(mitigation_operational_status($activeRecord)!=='active'){fwrite(STDERR,"Active mitigation lifecycle status was hidden by approval state.\n");exit(1);}
+$containedRecord=array_replace($activeRecord,['status'=>'contained']);
+if(mitigation_operational_status($containedRecord)!=='contained'){fwrite(STDERR,"Contained mitigation lifecycle status was hidden by approval state.\n");exit(1);}
+$exportRecord=mitigation_export_record($activeRecord);
+if(($exportRecord['approval_id']??false)!==null){fwrite(STDERR,"Operational mitigation export did not normalize approval state.\n");exit(1);}
 if(mitigation_csv_cell('=SUM(A1:A2)')!=="'=SUM(A1:A2)"){fwrite(STDERR,"Mitigation CSV protection failed.\n");exit(1);}
 
 $page=file_get_contents($root.'/app/mitigations.php').file_get_contents($root.'/includes/app/mitigation_view.php');
