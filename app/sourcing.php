@@ -26,6 +26,7 @@ if (query_string('export') === 'csv') sourcing_export_csv($comparison);
 $recommended = data_find('suppliers', (int)$comparison['recommended_supplier_id']);
 $alternate = data_find('suppliers', (int)$comparison['alternate_supplier_id']);
 $actions = '<a class="button ghost" href="'.h(app_url('suppliers.php')).'">Supplier Master</a>';
+$actions .= '<a class="button secondary" href="'.h(app_url('scenarios.php')).'">Risk Simulation</a>';
 if (can('reports.export')) {
     $exportIds = array_map(static fn(array $row): int => (int)$row['supplier']['id'], $comparison['rows']);
     $actions .= '<a class="button secondary" href="'.h(app_url('sourcing.php?' . http_build_query(['supplier_ids'=>$exportIds,'export'=>'csv']))).'">Export CSV</a>';

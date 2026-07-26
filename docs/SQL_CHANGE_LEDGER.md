@@ -23,7 +23,20 @@ Deferred migration:
 - Required import order: Version 3 schema first, then the Section 11 migration.
 - Existing installation behavior before import: live supplier comparison and CSV export remain available; Production Data save and approval routing are intentionally blocked until the table exists.
 
-The user will import this migration during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
+## Section 12 — Scenario Planning & Procurement Risk Simulation
+
+Deferred migration:
+
+`database/20260726_section12_procurement_scenarios.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11 migration.
+- Purpose: creates `procurement_scenarios` for saved assumptions, calculated results, supplier/category scope, risk classification, owner, approval reference, and decision status.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record.
+- Compatibility gate: validated on MySQL 8.0 and MariaDB 10.11 in the Section 12 workflow.
+- Required import order: Version 3 schema, Section 11 migration, then Section 12 migration.
+- Existing installation behavior before import: simulation and protected CSV export remain available; Production Data scenario save and approval routing are intentionally blocked until the table exists.
+
+The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
