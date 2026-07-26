@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/includes/app/bootstrap.php';
-require_once dirname(__DIR__) . '/includes/app/mitigation_planning.php';
+require_once dirname(__DIR__) . '/includes/app/execution_management.php';
 require_app_user();
 if(request_method()!=='POST')redirect_to(app_url('mitigations.php'));
 verify_csrf();
@@ -77,6 +77,8 @@ try{
     if($action==='contain'){
         require_permission('savings.edit');$id=post_int('id');$record=mitigation_find_record($id);if(!$record)throw new RuntimeException('The mitigation plan is outside the active scope.');
         $actions=mitigation_actions($id);foreach($actions as $row)if(!in_array((string)$row['status'],['completed','cancelled'],true))throw new RuntimeException('Complete or cancel every action before marking the risk contained.');
+        $completedCount=count(array_filter($actions,static fn(array $row): bool => ($row['status']??'')==='completed'));
+        if($completedCount>0){if(data_is_production()&&!execution_tables_ready())throw new RuntimeException('Import the Section 14 execution migration before containment verification.');$readiness=execution_plan_readiness($id);if(!$readiness['ready'])throw new RuntimeException('Every completed mitigation action requires a verified execution record before the risk can be marked contained.');}
         $before=$record;$record['status']='contained';$record=mitigation_save_plan($record);data_add_audit('Mitigation Planning','risk_contained','procurement_mitigation_plan',$id,$before,$record,$record['company_id']);flash('success','The procurement risk is marked contained.');redirect_to(app_url('mitigations.php?id='.$id));
     }
     throw new RuntimeException('Unknown mitigation action.');
