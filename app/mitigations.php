@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/includes/app/bootstrap.php';
 require_once dirname(__DIR__) . '/includes/app/mitigation_planning.php';
+require_once dirname(__DIR__) . '/includes/app/mitigation_status.php';
 require_permission('reports.view');
 
 $planId=query_int('id');
@@ -24,7 +25,7 @@ $plan=$savedPlan??[
 $actions=$savedPlan?mitigation_actions((int)$savedPlan['id']):$blueprint['actions'];
 $simulation=$blueprint['simulation'];
 $metrics=mitigation_calculate_metrics($plan,$actions,$simulation);
-if(query_string('export')==='csv'&&$savedPlan)mitigation_export_csv($plan,$actions,$metrics);
+if(query_string('export')==='csv'&&$savedPlan)mitigation_export_csv(mitigation_export_record($plan),$actions,$metrics);
 
 $supplier=$simulation['baseline']['supplier'];
 $category=data_find('categories',(int)$simulation['baseline']['category_id']);
