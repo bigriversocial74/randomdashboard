@@ -26,9 +26,10 @@ php tests/section6_imports.php
 php tests/section7_workflows.php
 php tests/section8_agent.php
 php tests/section9_admin.php
+php tests/section11_supplier_comparison.php
 
 pages=(
-  dashboard.php briefing.php reports.php suppliers.php items.php purchase-orders.php inventory.php
+  dashboard.php briefing.php reports.php suppliers.php sourcing.php items.php purchase-orders.php inventory.php
   scorecards.php imports.php discovery.php data-collection.php savings.php approvals.php notifications.php
   agent.php tour.php profile.php settings.php change-password.php admin/index.php admin/users.php
   admin/roles.php admin/companies.php admin/access-requests.php admin/sessions.php admin/security.php
@@ -50,8 +51,8 @@ if grep -R -nE "Open Installer|\$env\['installer'\]|simulated a password-reset|r
   exit 1
 fi
 
-for report in docs/SECTION_{1..10}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md; do
+for report in docs/SECTION_{1..11}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md; do
   [[ -f "$report" ]] || { echo "Missing quality evidence: $report" >&2; exit 1; }
 done
 
-echo "All Sections 1-10 quality gates passed."
+echo "All Sections 1-11 quality gates passed."
