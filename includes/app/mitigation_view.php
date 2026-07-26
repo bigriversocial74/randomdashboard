@@ -5,7 +5,7 @@
         <span class="eyebrow">Mitigation Action Plans &amp; Supplier Contingency Management</span>
         <h2><?= h($plan['title']) ?></h2>
         <p><?= h($plan['summary']) ?></p>
-        <div class="company-chip-row"><span><?= h(current_scope_label()) ?></span><span><?= h($plan['plan_number']) ?></span><span><?= h(status_label(mitigation_effective_status($plan))) ?></span><span><?= (int)$metrics['action_count'] ?> owned actions</span><span><?= (int)$metrics['overdue_count'] ?> overdue</span></div>
+        <div class="company-chip-row"><span><?= h(current_scope_label()) ?></span><span><?= h($plan['plan_number']) ?></span><span><?= h(status_label(mitigation_operational_status($plan))) ?></span><span><?= (int)$metrics['action_count'] ?> owned actions</span><span><?= (int)$metrics['overdue_count'] ?> overdue</span></div>
     </div>
     <div class="mitigation-risk <?= h(status_class($metrics['residual_risk_level'])) ?>"><span>Residual risk</span><strong><?= number_format((float)$metrics['residual_risk_score'],1) ?></strong><small>Reduced from <?= number_format((float)$metrics['source_risk_score'],1) ?> · <?= h(status_label($metrics['residual_risk_level'])) ?></small></div>
 </section>
@@ -55,8 +55,8 @@
     </main>
 
     <aside>
-        <article class="plan-side-card"><span class="eyebrow">Activation control</span><h2>Governed response</h2><div class="residual-callout"><span>Current plan state</span><strong><?= h(status_label(mitigation_effective_status($plan))) ?></strong></div><p><?= h($plan['activation_notes']) ?></p>
-            <?php if($savedPlan): $effectiveStatus=mitigation_effective_status($savedPlan); ?>
+        <article class="plan-side-card"><span class="eyebrow">Activation control</span><h2>Governed response</h2><div class="residual-callout"><span>Current plan state</span><strong><?= h(status_label(mitigation_operational_status($plan))) ?></strong></div><p><?= h($plan['activation_notes']) ?></p>
+            <?php if($savedPlan): $effectiveStatus=mitigation_operational_status($savedPlan); ?>
                 <div class="plan-history-actions">
                 <?php if(can('approvals.submit')&&in_array($effectiveStatus,['draft','changes_requested'],true)): ?><form action="<?= h(app_url('mitigation-action.php')) ?>" method="post"><?= csrf_field() ?><input type="hidden" name="action" value="submit"><input type="hidden" name="id" value="<?= (int)$savedPlan['id'] ?>"><button class="button primary" type="submit">Route approval</button></form><?php endif; ?>
                 <?php if(can('savings.edit')&&$effectiveStatus==='approved'): ?><form action="<?= h(app_url('mitigation-action.php')) ?>" method="post"><?= csrf_field() ?><input type="hidden" name="action" value="activate"><input type="hidden" name="id" value="<?= (int)$savedPlan['id'] ?>"><button class="button primary" type="submit">Activate plan</button></form><?php endif; ?>
@@ -65,7 +65,7 @@
             <?php else: ?><p>Save the blueprint before routing approval or activating the contingency response.</p><?php endif; ?>
         </article>
 
-        <article class="plan-side-card"><span class="eyebrow">Saved plans</span><h2>Contingency history</h2><?php foreach(mitigation_records() as $record): $recordActions=mitigation_actions((int)$record['id']);$recordMetrics=mitigation_calculate_metrics($record,$recordActions); ?><div class="plan-history-row"><strong><?= h($record['title']) ?></strong><small><?= h($record['plan_number']) ?> · <?= count($recordActions) ?> actions · <?= number_format((float)$recordMetrics['coverage_pct'],1) ?>% coverage</small><div class="plan-history-actions"><?= badge(mitigation_effective_status($record)) ?><a href="<?= h(app_url('mitigations.php?id='.(int)$record['id'])) ?>">Open plan</a></div></div><?php endforeach; ?><?php if(!mitigation_records())render_empty_state('No saved mitigation plans','Build the first governed contingency plan from a procurement scenario.'); ?></article>
+        <article class="plan-side-card"><span class="eyebrow">Saved plans</span><h2>Contingency history</h2><?php foreach(mitigation_records() as $record): $recordActions=mitigation_actions((int)$record['id']);$recordMetrics=mitigation_calculate_metrics($record,$recordActions); ?><div class="plan-history-row"><strong><?= h($record['title']) ?></strong><small><?= h($record['plan_number']) ?> · <?= count($recordActions) ?> actions · <?= number_format((float)$recordMetrics['coverage_pct'],1) ?>% coverage</small><div class="plan-history-actions"><?= badge(mitigation_operational_status($record)) ?><a href="<?= h(app_url('mitigations.php?id='.(int)$record['id'])) ?>">Open plan</a></div></div><?php endforeach; ?><?php if(!mitigation_records())render_empty_state('No saved mitigation plans','Build the first governed contingency plan from a procurement scenario.'); ?></article>
     </aside>
 </div>
 
