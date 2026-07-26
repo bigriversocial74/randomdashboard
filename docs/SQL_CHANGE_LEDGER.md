@@ -75,11 +75,24 @@ Deferred migration:
 - Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, Section 14 migration, then Section 15 migration.
 - Existing installation behavior before import: Demo Mode performance reviews, regression analysis, corrective actions, export, and Agent analysis remain available; Production Data review, action, event, approval, monitoring, notification, and closure writes are intentionally blocked until all three Section 15 tables exist.
 
+## Section 16 — Contract Lifecycle, SLA Compliance & Renewal Governance
+
+Deferred migration:
+
+`database/20260726_section16_contract_lifecycle_renewal_governance.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11 through Section 15 migrations.
+- Purpose: preserves `supplier_contracts` as the contract master and creates governance profiles, obligations, amendments, renewal decisions, and immutable contract events for notice management, SLA evidence, spend governance, commercial alternatives, approval routing, and controlled implementation.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record; the Section 16 workflow imports this migration twice on MySQL 8.0 and MariaDB 10.11.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, Section 14 migration, Section 15 migration, then Section 16 migration.
+- Existing installation behavior before import: existing contract master records remain readable and Demo Mode contract governance remains available; Production Data profile, obligation, amendment, renewal, event, approval, notification, and implementation writes are intentionally blocked until all five Section 16 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
-- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 order.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.
