@@ -12,7 +12,8 @@
 | 8 | Agent Workspace and executive briefing | 6.9/10 | 10/10 | None |
 | 9 | Administration, security, and governance | 5.9/10 | 10/10 | None |
 | 10 | Delivery, CI, and end-to-end readiness | 5.6/10 | 10/10 | None |
+| 11 | Supplier comparison and strategic sourcing | 4.6/10 | 10/10 | Deferred migration |
 
 ## Release decision
 
-All ten completed sections must pass `tests/run-quality.sh` before a release or pull request is considered merge-ready. A 10/10 score means the section satisfies its documented rubric and automated gates; it does not replace production user acceptance, backup, deployment, or security monitoring.
+All completed sections must pass `tests/run-quality.sh` before a release or pull request is considered merge-ready. A 10/10 score means the section satisfies its documented rubric and automated gates; it does not replace production user acceptance, backup, deployment, or security monitoring.
