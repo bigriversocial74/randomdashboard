@@ -1,0 +1,51 @@
+name: Import Section 1 source baseline
+
+on:
+  push:
+    branches:
+      - quality-section-1-foundation
+    paths:
+      - gruber-section-1-source.zip
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: quality-section-1-foundation
+
+      - name: Verify and extract source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f gruber-section-1-source.zip
+          echo 'a99f7ca66c59ca39a65fd7505661cc504bd0af7929cdf1ed4c22c07b857d5f64  gruber-section-1-source.zip' | sha256sum --check --strict
+          rm -rf /tmp/gruber-section-1-source
+          mkdir -p /tmp/gruber-section-1-source
+          unzip -q gruber-section-1-source.zip -d /tmp/gruber-section-1-source
+          test -f /tmp/gruber-section-1-source/app/index.php
+          test -f /tmp/gruber-section-1-source/app/change-password.php
+          test -f /tmp/gruber-section-1-source/.github/workflows/quality.yml
+          test -f /tmp/gruber-section-1-source/docs/SECTION_1_QUALITY_REPORT.md
+          test ! -f /tmp/gruber-section-1-source/config.php
+          file_count="$(find /tmp/gruber-section-1-source -type f | wc -l)"
+          test "$file_count" -ge 110
+
+      - name: Replace placeholders with complete source
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/gruber-section-1-source/. .
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add complete Section 1 quality baseline'
+          git push origin HEAD:quality-section-1-foundation
