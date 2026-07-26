@@ -1,11 +1,11 @@
-name: Import Section 1 source baseline
+name: Import quality-complete source baseline
 
 on:
   push:
     branches:
       - quality-section-1-foundation
     paths:
-      - gruber-section-1-source.zip
+      - gruber-ai-procurement-quality-complete.zip
   workflow_dispatch:
 
 permissions:
@@ -25,27 +25,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f gruber-section-1-source.zip
-          echo 'a99f7ca66c59ca39a65fd7505661cc504bd0af7929cdf1ed4c22c07b857d5f64  gruber-section-1-source.zip' | sha256sum --check --strict
-          rm -rf /tmp/gruber-section-1-source
-          mkdir -p /tmp/gruber-section-1-source
-          unzip -q gruber-section-1-source.zip -d /tmp/gruber-section-1-source
-          test -f /tmp/gruber-section-1-source/app/index.php
-          test -f /tmp/gruber-section-1-source/app/change-password.php
-          test -f /tmp/gruber-section-1-source/.github/workflows/quality.yml
-          test -f /tmp/gruber-section-1-source/docs/SECTION_1_QUALITY_REPORT.md
-          test ! -f /tmp/gruber-section-1-source/config.php
-          file_count="$(find /tmp/gruber-section-1-source -type f | wc -l)"
-          test "$file_count" -ge 110
+          package='gruber-ai-procurement-quality-complete.zip'
+          source_dir='/tmp/gruber-quality-complete'
+          test -f "$package"
+          echo '2602114c6eff5ab27369254a97980ee10be7f4ec24d0f08d8c76d88fb577a43b  gruber-ai-procurement-quality-complete.zip' | sha256sum --check --strict
+          rm -rf "$source_dir"
+          mkdir -p "$source_dir"
+          unzip -q "$package" -d "$source_dir"
+          test -f "$source_dir/app/index.php"
+          test -f "$source_dir/app/change-password.php"
+          test -f "$source_dir/.github/workflows/quality.yml"
+          test -f "$source_dir/docs/SECTION_10_QUALITY_REPORT.md"
+          test -f "$source_dir/docs/QUALITY_SCORECARD.md"
+          test -f "$source_dir/docs/SQL_CHANGE_LEDGER.md"
+          test ! -f "$source_dir/config.php"
+          file_count="$(find "$source_dir" -type f | wc -l)"
+          test "$file_count" -ge 140
 
-      - name: Replace placeholders with complete source
+      - name: Run source quality gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/gruber-quality-complete
+          tests/run-quality.sh
+
+      - name: Replace importer with complete source
         shell: bash
         run: |
           set -euo pipefail
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/gruber-section-1-source/. .
+          cp -a /tmp/gruber-quality-complete/. .
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'Add complete Section 1 quality baseline'
+          git commit -m 'Add quality-complete Gruber procurement source baseline'
           git push origin HEAD:quality-section-1-foundation
