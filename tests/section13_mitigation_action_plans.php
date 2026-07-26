@@ -38,7 +38,7 @@ if(mitigation_operational_status($activeRecord)!=='active'){fwrite(STDERR,"Activ
 $containedRecord=array_replace($activeRecord,['status'=>'contained']);
 if(mitigation_operational_status($containedRecord)!=='contained'){fwrite(STDERR,"Contained mitigation lifecycle status was hidden by approval state.\n");exit(1);}
 $exportRecord=mitigation_export_record($activeRecord);
-if(($exportRecord['approval_id']??false)!==null){fwrite(STDERR,"Operational mitigation export did not normalize approval state.\n");exit(1);}
+if(!array_key_exists('approval_id',$exportRecord)||$exportRecord['approval_id']!==null){fwrite(STDERR,"Operational mitigation export did not normalize approval state.\n");exit(1);}
 if(mitigation_csv_cell('=SUM(A1:A2)')!=="'=SUM(A1:A2)"){fwrite(STDERR,"Mitigation CSV protection failed.\n");exit(1);}
 
 $page=file_get_contents($root.'/app/mitigations.php').file_get_contents($root.'/includes/app/mitigation_view.php');
