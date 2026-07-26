@@ -63,7 +63,7 @@ jobs:
           cd /tmp/gruber-quality-complete
           tests/run-quality.sh
 
-      - name: Commit application source
+      - name: Prepare application source tree
         shell: bash
         run: |
           set -euo pipefail
@@ -75,8 +75,19 @@ jobs:
           test -f app/index.php
           test ! -f config.php
           test ! -f gruber-ai-procurement-quality-complete.zip
+
+      - name: Commit application source tree
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
+          git status --short
           git commit -m 'Add quality-complete Gruber procurement source baseline'
+
+      - name: Push application source tree
+        shell: bash
+        run: |
+          set -euo pipefail
           git push origin "HEAD:${TARGET_BRANCH}"
