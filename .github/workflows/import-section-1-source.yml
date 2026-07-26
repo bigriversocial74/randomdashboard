@@ -63,12 +63,18 @@ jobs:
           cd /tmp/gruber-quality-complete
           tests/run-quality.sh
 
-      - name: Replace importer with complete source
+      - name: Commit application source
         shell: bash
         run: |
           set -euo pipefail
+          cp .github/workflows/import-section-1-source.yml /tmp/import-source.yml
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/gruber-quality-complete/. .
+          rsync -a --exclude='.github/workflows/' /tmp/gruber-quality-complete/ .
+          mkdir -p .github/workflows
+          cp /tmp/import-source.yml .github/workflows/import-section-1-source.yml
+          test -f app/index.php
+          test ! -f config.php
+          test ! -f gruber-ai-procurement-quality-complete.zip
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
