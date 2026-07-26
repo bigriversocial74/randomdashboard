@@ -1,0 +1,103 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__) . '/includes/app/bootstrap.php';
+require_once dirname(__DIR__) . '/includes/app/agent_context.php';
+require_permission('agent.view');
+
+$workspace = gruber_agent_build_workspace();
+$quickPrompts = $workspace['prompts'];
+$metrics = $workspace['metrics'];
+$environmentLabel = data_is_demo()
+    ? 'Demo session · live fictional enterprise dataset'
+    : 'Production session · approved enterprise data';
+$contextLabel = data_is_demo() ? 'Demo evidence connected' : 'Production evidence connected';
+
+$pageActions = '<a class="button secondary" href="' . h(app_url('briefing.php')) . '">Open Daily Briefing</a>';
+
+render_app_start(
+    'Agent Workspace',
+    'agent',
+    'Supervised enterprise assistants',
+    'Ask about the same purchase orders, suppliers, inventory, savings, approvals and discovery records used throughout the active workspace.',
+    $pageActions
+);
+?>
+<section class="production-agent-page" id="productionAgentWorkspace">
+    <article class="agent-chat-stage panel" id="agentChatStage" aria-live="polite">
+        <div class="agent-session-label">
+            <span><?= h($environmentLabel) ?></span>
+            <small><?= h((string) $workspace['scope']) ?></small>
+        </div>
+
+        <div class="agent-chat-message assistant-message" data-agent-initial>
+            <div class="agent-message-avatar">AI</div>
+            <div class="agent-message-body">
+                <span>Executive Briefing Agent</span>
+                <p>I am connected to the active <?= data_is_demo() ? 'fictional demo dataset' : 'production dataset' ?> and can explain the records visible to your role and company scope. Ask about a PO number, supplier, item, company, savings opportunity, approval or data exception.</p>
+                <div class="agent-evidence-row">
+                    <b>Context loaded</b>
+                    <span><?= (int) $metrics['purchase_orders'] ?> POs</span>
+                    <span><?= (int) $metrics['suppliers'] ?> suppliers</span>
+                    <span><?= h((string) $metrics['inventory_value']) ?> inventory</span>
+                    <span><?= (int) $metrics['savings_opportunities'] ?> savings opportunities</span>
+                    <span><?= (int) $metrics['pending_approvals'] ?> pending approvals</span>
+                </div>
+            </div>
+        </div>
+
+        <?php if (!empty($workspace['example_queries'])): ?>
+            <div class="agent-example-queries" aria-label="Example demo records">
+                <span>Try a record</span>
+                <?php foreach ($workspace['example_queries'] as $exampleQuery): ?>
+                    <button type="button" data-agent-query="<?= h((string) $exampleQuery) ?>"><?= h((string) $exampleQuery) ?></button>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        <div class="agent-prompt-suggestions" id="agentPromptSuggestions" aria-label="Suggested questions">
+            <?php foreach (array_slice($quickPrompts, 0, 5) as $index => $item): ?>
+                <button type="button" data-agent-quick-index="<?= $index ?>"><?= h($item['title']) ?></button>
+            <?php endforeach; ?>
+        </div>
+    </article>
+
+    <div class="agent-composer-dock" id="agentComposerDock">
+        <form class="agent-chat-composer" id="agentChatForm">
+            <button class="agent-quick-button" id="agentQuickMenuButton" type="button" aria-label="Open workspace prompts" aria-controls="agentQuickModal" aria-expanded="false">＋</button>
+            <textarea id="agentChatInput" rows="1" placeholder="Ask about GPS-10428, a supplier, an item, savings, transfers, approvals or discovery…"></textarea>
+            <button class="agent-send-button" type="submit" aria-label="Send message">↑</button>
+        </form>
+    </div>
+</section>
+
+<div class="agent-quick-modal" id="agentQuickModal" aria-hidden="true">
+    <button class="agent-quick-backdrop" type="button" data-agent-quick-close aria-label="Close quick prompts" tabindex="-1"></button>
+    <section class="agent-quick-panel" role="dialog" aria-modal="true" aria-labelledby="agentQuickTitle">
+        <header>
+            <div>
+                <span>Gruber AI workspace</span>
+                <h2 id="agentQuickTitle"><?= data_is_demo() ? 'Demo intelligence prompts' : 'Procurement intelligence prompts' ?></h2>
+                <p>Each prompt reads the same scoped records displayed in the dashboard modules.</p>
+            </div>
+            <button type="button" data-agent-quick-close aria-label="Close">×</button>
+        </header>
+        <div class="agent-quick-grid">
+            <?php foreach ($quickPrompts as $index => $item): ?>
+                <button type="button" class="agent-quick-card" data-agent-quick-index="<?= $index ?>">
+                    <i aria-hidden="true"><?= h($item['icon']) ?></i>
+                    <span><strong><?= h($item['title']) ?></strong><small><?= h($item['description']) ?></small></span>
+                </button>
+            <?php endforeach; ?>
+        </div>
+        <footer>
+            <span><?= h($contextLabel) ?> · <?= h((string) $workspace['scope']) ?></span>
+            <button type="button" id="clearAgentChat">Clear chat</button>
+            <button type="button" id="newAgentThread">New thread</button>
+        </footer>
+    </section>
+</div>
+
+<script type="application/json" id="agentWorkspaceData"><?= json_encode(
+    $workspace,
+    JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+) ?></script>
+<?php render_app_end(); ?>

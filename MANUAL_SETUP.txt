@@ -1,0 +1,12 @@
+GRUBER PROCUREMENT INTELLIGENCE — MANUAL SETUP
+
+Use this process only after the complete SQL schema has been imported successfully.
+
+1. Upload the deployment into the Gruber website root and extract with overwrite enabled.
+2. Copy config-example.php to config.php.
+3. Enter the real database host, database name, username, password, support email, timezone, and any trusted reverse-proxy addresses.
+4. For a brand-new environment only, copy manual-admin-example.php to a temporary private filename that is difficult to guess.
+5. Open that temporary filename, create the first System Administrator, confirm production sign-in, and delete the temporary file immediately.
+6. Keep manual-admin.php and install.php disabled.
+
+Never commit or package config.php. Do not re-import SQL into an already initialized database.

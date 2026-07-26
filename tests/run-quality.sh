@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if [[ -f config.php ]]; then
+  echo "config.php must not be committed or packaged." >&2
+  exit 1
+fi
+
+while IFS= read -r -d '' file; do
+  php -l "$file" >/dev/null
+done < <(find . -type f -name '*.php' -print0)
+
+while IFS= read -r -d '' file; do
+  node --check "$file" >/dev/null
+done < <(find . -type f -name '*.js' -print0)
+
+php tests/account_menu_state.php logged-out
+php tests/account_menu_state.php logged-in
+php tests/section1_static.php
+php tests/section2_public.php
+php tests/section3_shell.php
+php tests/section4_reporting.php
+php tests/section5_core.php
+php tests/section6_imports.php
+php tests/section7_workflows.php
+php tests/section8_agent.php
+php tests/section9_admin.php
+
+pages=(
+  dashboard.php briefing.php reports.php suppliers.php items.php purchase-orders.php inventory.php
+  scorecards.php imports.php discovery.php data-collection.php savings.php approvals.php notifications.php
+  agent.php tour.php profile.php settings.php change-password.php admin/index.php admin/users.php
+  admin/roles.php admin/companies.php admin/access-requests.php admin/sessions.php admin/security.php
+  admin/audit.php admin/settings.php admin/environment.php
+)
+for page in "${pages[@]}"; do
+  php tests/demo_page_render.php "$page"
+done
+
+if grep -R -nE "YOUR_DB_|YOUR_DATABASE|CHANGE_ME" app includes index.php demo.php resume.php signup.php lost-password.php signin.php signout.php install.php manual-admin.php >/tmp/gruber-secret-placeholders.txt; then
+  echo "Unsafe deployment placeholder detected outside example/setup files." >&2
+  cat /tmp/gruber-secret-placeholders.txt >&2
+  exit 1
+fi
+
+if grep -R -nE "Open Installer|\$env\['installer'\]|simulated a password-reset|reset delivery was simulated" app includes >/tmp/gruber-retired-workflows.txt; then
+  echo "Retired installer or simulated password-delivery copy detected." >&2
+  cat /tmp/gruber-retired-workflows.txt >&2
+  exit 1
+fi
+
+for report in docs/SECTION_{1..10}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md; do
+  [[ -f "$report" ]] || { echo "Missing quality evidence: $report" >&2; exit 1; }
+done
+
+echo "All Sections 1-10 quality gates passed."

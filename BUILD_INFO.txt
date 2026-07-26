@@ -1,0 +1,21 @@
+Gruber Procurement Intelligence
+Quality-complete cumulative build: 2026-07-26
+
+Completed scored sections:
+1. Configuration, authentication, sessions and account access
+2. Public website, shared header and account menus
+3. Application shell, sidebar and accessibility
+4. Executive dashboard and operational reporting
+5. Suppliers, items, purchase orders, inventory and scorecards
+6. Import and Data Quality Center
+7. Savings, approvals and notifications
+8. Agent Workspace and Daily Executive Briefing
+9. Administration, security and governance
+10. Delivery, CI and end-to-end readiness
+
+Release safeguards:
+- Manual SQL/config deployment only; browser installer remains disabled.
+- No live config.php is committed or packaged.
+- No incremental SQL migration is required for this quality catch-up pass.
+- tests/run-quality.sh must pass before PR or deployment.
+- See docs/QUALITY_SCORECARD.md and docs/SQL_CHANGE_LEDGER.md.
