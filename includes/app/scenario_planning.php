@@ -52,10 +52,10 @@ function scenario_category_id(array $inputs, ?array $supplier): int
 function scenario_affected_purchase_orders(?array $supplier, int $categoryId): array
 {
     $orders = data_visible_collection('purchase_orders');
-    $items = [];
-    foreach (data_visible_collection('items') as $item) if ($categoryId <= 0 || (int)($item['category_id'] ?? 0) === $categoryId) $items[(int)$item['id']] = true;
+    $lines = data_collection('purchase_order_lines');
+    $items = array_fill_keys(array_map('intval', array_column(array_filter(data_visible_collection('items'), static fn(array $item): bool => $categoryId <= 0 || (int)($item['category_id'] ?? 0) === $categoryId),'id')),true);
     $poIdsByCategory = [];
-    foreach (data_collection('purchase_order_lines') as $line) if (isset($items[(int)($line['item_id'] ?? 0)])) $poIdsByCategory[(int)($line['purchase_order_id'] ?? 0)] = true;
+    foreach ($lines as $line) if (isset($items[(int)($line['item_id'] ?? 0)])) $poIdsByCategory[(int)($line['purchase_order_id'] ?? 0)] = true;
     return array_values(array_filter($orders, static function(array $po) use ($supplier,$poIdsByCategory): bool {
         if ($supplier && (int)($po['supplier_id'] ?? 0) === (int)$supplier['id']) return true;
         return isset($poIdsByCategory[(int)($po['id'] ?? 0)]);
@@ -140,25 +140,30 @@ function scenario_calculate(array $raw): array
     $inputs = scenario_normalize_inputs($raw);
     $baseline = scenario_baseline($inputs);
     $spend = (float)$baseline['annual_spend'];
-    $priceImpact = $spend * ($inputs['price_change_pct']/100);
-    $demandImpact = $spend * ($inputs['demand_change_pct']/100);
-    $delayExpedite = (float)$baseline['open_po_value'] * min(0.35,$inputs['lead_time_delay_days']/180) * (0.35 + ($inputs['disruption_pct']/100));
-    $disruptionExposure = (float)$baseline['open_po_value'] * ($inputs['disruption_pct']/100);
+    $type = (string)$inputs['scenario_type'];
+    $activePriceChange = in_array($type, ['price_increase','compound'], true) ? (float)$inputs['price_change_pct'] : 0.0;
+    $activeDemandChange = in_array($type, ['demand_spike','compound'], true) ? (float)$inputs['demand_change_pct'] : 0.0;
+    $activeDelayDays = in_array($type, ['lead_time_delay','supply_disruption','compound'], true) ? (int)$inputs['lead_time_delay_days'] : 0;
+    $activeDisruption = in_array($type, ['supply_disruption','compound'], true) ? (float)$inputs['disruption_pct'] : 0.0;
+    $priceImpact = $spend * ($activePriceChange/100);
+    $demandImpact = $spend * ($activeDemandChange/100);
+    $delayExpedite = (float)$baseline['open_po_value'] * min(0.35,$activeDelayDays/180) * (0.35 + ($activeDisruption/100));
+    $disruptionExposure = (float)$baseline['open_po_value'] * ($activeDisruption/100);
     $grossImpact = $priceImpact + $demandImpact + $delayExpedite;
     $savingsOffset = max(0,$grossImpact) * ($inputs['savings_offset_pct']/100);
     $transferAvoidance = (float)$baseline['inventory_value'] * ($inputs['transfer_recovery_pct']/100);
     $netImpact = $grossImpact - $savingsOffset - $transferAvoidance;
     $inventoryBuffer = min(35,log10(max(1,(float)$baseline['inventory_value']))*5);
     $riskScore = min(100,max(0,
-        ($inputs['disruption_pct']*.45) +
-        ($inputs['lead_time_delay_days']*.9) +
-        (max(0,$inputs['demand_change_pct'])*.22) +
+        ($activeDisruption*.45) +
+        ($activeDelayDays*.9) +
+        (max(0,$activeDemandChange)*.22) +
         ($baseline['past_due_count']*8) -
         ($inputs['transfer_recovery_pct']*.18) -
         $inventoryBuffer
     ));
-    $serviceRisk = min(100,max(0,$riskScore + ($inputs['demand_change_pct']*.12) - 5));
-    $cashRisk = min(100,max(0,40 + ($inputs['price_change_pct']*.9) + ($inputs['demand_change_pct']*.35) + ($inputs['disruption_pct']*.2) - ($inputs['savings_offset_pct']*.25)));
+    $serviceRisk = min(100,max(0,$riskScore + ($activeDemandChange*.12) - 5));
+    $cashRisk = min(100,max(0,40 + ($activePriceChange*.9) + ($activeDemandChange*.35) + ($activeDisruption*.2) - ($inputs['savings_offset_pct']*.25)));
     $cases = [];
     foreach (['best'=>0.65,'expected'=>1.0,'worst'=>1.45] as $name=>$factor) {
         $cases[$name] = [
@@ -195,6 +200,7 @@ function scenario_calculate(array $raw): array
         'cases'=>$cases,
         'alternatives'=>scenario_alternative_suppliers($baseline),
         'critical_items'=>array_slice($criticalItems,0,6),
+        'active_assumptions'=>['price_change_pct'=>$activePriceChange,'demand_change_pct'=>$activeDemandChange,'lead_time_delay_days'=>$activeDelayDays,'disruption_pct'=>$activeDisruption],
         'generated_at'=>date('Y-m-d H:i:s'),
     ];
 }
