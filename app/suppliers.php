@@ -18,7 +18,8 @@ $pagination=paginate_records($records,query_int('page',1),8);
 $contracts=data_visible_collection('contracts');
 $visibleSupplierIds=array_map('intval',array_column(data_visible_collection('suppliers'),'id'));
 $supplierContacts=array_values(array_filter(data_collection('supplier_contacts'),fn(array $contact):bool=>in_array((int)$contact['supplier_id'],$visibleSupplierIds,true)));
-$actions=can('suppliers.create')?'<button class="button primary" data-modal-open="supplierModal" type="button">Create Supplier</button>':'';
+$actions='<a class="button secondary" href="'.h(app_url('sourcing.php')).'">Compare Suppliers</a>';
+if(can('suppliers.create'))$actions.='<button class="button primary" data-modal-open="supplierModal" type="button">Create Supplier</button>';
 render_app_start('Supplier Master','suppliers','Supplier governance','Normalize suppliers, maintain company relationships and contacts, review contracts, and manage approval status.',$actions);
 ?>
 <section class="metric-grid metric-grid-4">
