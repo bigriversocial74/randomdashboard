@@ -1,0 +1,26 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/includes/app/bootstrap.php';
+require_once dirname(__DIR__).'/includes/app/operational_calendar.php';
+require_app_user();
+if(request_method()!=='POST'){http_response_code(405);exit('Method not allowed.');}
+verify_csrf();$action=post_string('action');$return='operational-calendar.php';
+try{
+    if($action==='create_event'){
+        require_permission('operational_calendar.create');$starts=str_replace('T',' ',post_string('starts_at'));$ends=str_replace('T',' ',post_string('ends_at'));$number='CAL-'.date('Ymd').'-'.strtoupper(substr(bin2hex(random_bytes(4)),0,8));
+        operational_calendar_save_event(['id'=>null,'event_number'=>$number,'source_key'=>hash('sha256','manual|'.$number),'source_module'=>'operational_calendar','source_type'=>'manual_event','source_id'=>0,'entity_id'=>post_int('entity_id'),'owner_user_id'=>(int)current_user()['id'],'title'=>mb_substr(post_string('title'),0,190),'description'=>mb_substr(post_string('description'),0,5000),'event_type'=>post_string('event_type','meeting'),'visibility'=>post_string('visibility','company'),'participant_user_ids_json'=>[],'starts_at'=>$starts,'ends_at'=>$ends,'all_day'=>0,'status'=>'scheduled','location'=>mb_substr(post_string('location'),0,240),'required_permission'=>'operational_calendar.view','created_by'=>(int)current_user()['id']]);flash('success','Calendar event created.');
+    }elseif($action==='save_capacity'){
+        require_permission('operational_calendar.manage_capacity');$existing=null;foreach(operational_calendar_capacity_profiles()as$row)if((int)$row['user_id']===post_int('user_id')&&(int)$row['company_id']===post_int('company_id')){$existing=$row;break;}
+        operational_calendar_save_capacity(array_replace($existing??[],['id'=>$existing['id']??null,'user_id'=>post_int('user_id'),'company_id'=>post_int('company_id'),'weekly_capacity_hours'=>(float)post_string('weekly_capacity_hours','40'),'daily_capacity_hours'=>(float)post_string('daily_capacity_hours','8'),'max_active_items'=>post_int('max_active_items',15),'utilization_warning_pct'=>75,'utilization_critical_pct'=>95,'timezone'=>'America/Phoenix','status'=>'active','effective_from'=>date('Y-m-d'),'effective_to'=>null,'evidence_note'=>mb_substr(post_string('evidence_note'),0,5000)]));flash('success','Capacity profile saved.');$return.='?tab=capacity';
+    }elseif($action==='create_delegation'){
+        require_permission('operational_calendar.delegate');$permissions=array_values(array_filter(array_map('trim',explode(',',post_string('permission_keys')))));$number='DEL-'.date('Y').'-'.str_pad((string)(count(operational_calendar_delegations())+1),4,'0',STR_PAD_LEFT);
+        operational_calendar_save_delegation(['id'=>null,'delegation_number'=>$number,'source_user_id'=>post_int('source_user_id'),'delegate_user_id'=>post_int('delegate_user_id'),'entity_id'=>post_int('entity_id'),'permission_keys_json'=>$permissions,'starts_at'=>str_replace('T',' ',post_string('starts_at')),'ends_at'=>str_replace('T',' ',post_string('ends_at')),'status'=>'planned','reason'=>mb_substr(post_string('reason'),0,5000),'created_by'=>(int)current_user()['id'],'reviewed_by'=>null,'approved_by'=>null,'activated_at'=>null,'revoked_at'=>null]);flash('success','Delegation created in planned status for independent review.');$return.='?tab=delegation';
+    }elseif($action==='generate_digest'){
+        require_permission('operational_calendar.view');$digest=operational_calendar_generate_digest(post_string('digest_type','daily'));flash('success',$digest['summary_text']);$return.='?tab=digests';
+    }elseif($action==='save_preferences'){
+        require_permission('operational_calendar.manage_notifications');$existing=operational_calendar_preferences();operational_calendar_save_preferences(array_replace($existing,['id'=>$existing['id']??null,'user_id'=>(int)current_user()['id'],'email_enabled'=>post_int('email_enabled'),'in_app_enabled'=>post_int('in_app_enabled'),'daily_digest_enabled'=>post_int('daily_digest_enabled'),'weekly_digest_enabled'=>post_int('weekly_digest_enabled'),'morning_summary_enabled'=>post_int('morning_summary_enabled'),'end_of_day_summary_enabled'=>post_int('end_of_day_summary_enabled'),'quiet_hours_start'=>post_string('quiet_hours_start','19:00').':00','quiet_hours_end'=>post_string('quiet_hours_end','07:00').':00','timezone'=>mb_substr(post_string('timezone','America/Phoenix'),0,100),'minimum_severity'=>post_string('minimum_severity','info'),'channel_settings_json'=>'{"email":"adapter_gated","in_app":"active"}']));flash('success','Notification and digest preferences saved.');$return.='?tab=settings';
+    }elseif($action==='create_subscription'){
+        require_permission('operational_calendar.export');$subscription=operational_calendar_create_subscription(post_string('subscription_name','My governed operational calendar'),['scope'=>'visible_events'],90);flash('success','Calendar feed created. Copy this token now; it will not be shown again: '.$subscription['_token']);$return.='?tab=settings';
+    }else{throw new RuntimeException('Unsupported operational-calendar action.');}
+}catch(Throwable$e){flash('error',$e->getMessage());}
+redirect_to(app_url($return));
