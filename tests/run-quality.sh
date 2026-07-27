@@ -35,10 +35,11 @@ php tests/section16_contract_lifecycle.php
 php tests/section17_demand_requisition.php
 php tests/section18_fulfillment_invoice_match.php
 php tests/section19_inventory_operations.php
+php tests/section20_savings_realization.php
 
 pages=(
   dashboard.php briefing.php reports.php suppliers.php sourcing.php scenarios.php mitigations.php executions.php performance.php contracts.php demand.php fulfillment.php items.php purchase-orders.php inventory.php inventory-operations.php
-  scorecards.php imports.php discovery.php data-collection.php savings.php approvals.php notifications.php
+  scorecards.php imports.php discovery.php data-collection.php savings.php savings-realization.php approvals.php notifications.php
   agent.php tour.php profile.php settings.php change-password.php admin/index.php admin/users.php
   admin/roles.php admin/companies.php admin/access-requests.php admin/sessions.php admin/security.php
   admin/audit.php admin/settings.php admin/environment.php
@@ -59,8 +60,8 @@ if grep -R -nE "Open Installer|\$env\['installer'\]|simulated a password-reset|r
   exit 1
 fi
 
-for report in docs/SECTION_{1..19}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md; do
+for report in docs/SECTION_{1..20}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md; do
   [[ -f "$report" ]] || { echo "Missing quality evidence: $report" >&2; exit 1; }
 done
 
-echo "All Sections 1-19 quality gates passed."
+echo "All Sections 1-20 quality gates passed."
