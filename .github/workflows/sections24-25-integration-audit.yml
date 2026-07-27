@@ -1,0 +1,115 @@
+name: Sections 24-25 Integration Audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  php-audit:
+    name: PHP ${{ matrix.php }} governance and orchestration audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1','8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run retained cumulative quality gate
+        run: tests/run-quality.sh
+      - name: Run Sections 24-25 integration audit
+        run: php tests/sections24_25_integration_audit.php
+
+  mysql-8-audit:
+    name: MySQL 8 cumulative and repeat-safe migration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and audit migration twice
+        run: |
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_sections24_25_integration_audit_hardening.sql
+            database/20260727_sections24_25_integration_audit_hardening.sql
+          )
+          for file in "${files[@]}"; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12','4.2-section13','4.3-section14','4.4-section15','4.5-section16','4.6-section17','4.7-section18','4.8-section19','4.9-section20','5.0-section21','5.1-section22','5.2-section23','5.3-section24','5.4-section25','5.5-sections24-25-audit')" | grep -qx '16'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_process_lanes l JOIN gruber_test.business_process_versions v ON v.id=l.version_id JOIN gruber_test.business_processes p ON p.id=v.process_id JOIN gruber_test.business_entities e ON e.id=l.entity_id WHERE p.process_code='PROC-P2P' AND ((l.lane_code='shared_procurement' AND e.entity_code='GRUBER-PROCUREMENT') OR (l.lane_code='shared_finance' AND e.entity_code='GRUBER-ACCOUNTS-PAYABLE') OR (l.lane_code IN ('requesting_business','receiving_business') AND e.entity_code='COMP-GPS'))" | grep -qx '4'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.role_permissions rp JOIN gruber_test.roles r ON r.id=rp.role_id JOIN gruber_test.permissions p ON p.id=rp.permission_id WHERE r.code='system_administrator' AND (p.permission_key LIKE 'entities.%' OR p.permission_key LIKE 'process_mapping.%')" | grep -qx '14'
+
+  mariadb-audit:
+    name: MariaDB 10.11 cumulative and repeat-safe migration
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and audit migration twice
+        run: |
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_sections24_25_integration_audit_hardening.sql
+            database/20260727_sections24_25_integration_audit_hardening.sql
+          )
+          for file in "${files[@]}"; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12','4.2-section13','4.3-section14','4.4-section15','4.5-section16','4.6-section17','4.7-section18','4.8-section19','4.9-section20','5.0-section21','5.1-section22','5.2-section23','5.3-section24','5.4-section25','5.5-sections24-25-audit')" | grep -qx '16'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_process_lanes l JOIN gruber_test.business_process_versions v ON v.id=l.version_id JOIN gruber_test.business_processes p ON p.id=v.process_id JOIN gruber_test.business_entities e ON e.id=l.entity_id WHERE p.process_code='PROC-P2P' AND ((l.lane_code='shared_procurement' AND e.entity_code='GRUBER-PROCUREMENT') OR (l.lane_code='shared_finance' AND e.entity_code='GRUBER-ACCOUNTS-PAYABLE') OR (l.lane_code IN ('requesting_business','receiving_business') AND e.entity_code='COMP-GPS'))" | grep -qx '4'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.role_permissions rp JOIN gruber_test.roles r ON r.id=rp.role_id JOIN gruber_test.permissions p ON p.id=rp.permission_id WHERE r.code='system_administrator' AND (p.permission_key LIKE 'entities.%' OR p.permission_key LIKE 'process_mapping.%')" | grep -qx '14'
