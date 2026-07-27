@@ -85,8 +85,9 @@ jobs:
           for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_calendar_events','enterprise_notification_preferences','enterprise_notification_queue','enterprise_capacity_profiles','enterprise_delegations','enterprise_digest_runs','enterprise_calendar_subscriptions','enterprise_operating_cadences')" | grep -qx '8'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'operational_calendar.%'" | grep -qx '8'
-          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_operating_cadences" | grep -qx '3'
-          test "$(mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_events")" -gt 0
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_operating_cadences WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_events WHERE ends_at<=starts_at" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_capacity_profiles WHERE weekly_capacity_hours<=0 OR daily_capacity_hours<=0 OR utilization_warning_pct>=utilization_critical_pct" | grep -qx '0'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_subscriptions WHERE token_hash=token_prefix" | grep -qx '0'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.6-section27'" | grep -qx '1'
       - name: Upload failed MySQL output
@@ -144,8 +145,9 @@ jobs:
           for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_calendar_events','enterprise_notification_preferences','enterprise_notification_queue','enterprise_capacity_profiles','enterprise_delegations','enterprise_digest_runs','enterprise_calendar_subscriptions','enterprise_operating_cadences')" | grep -qx '8'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'operational_calendar.%'" | grep -qx '8'
-          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_operating_cadences" | grep -qx '3'
-          test "$(mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_events")" -gt 0
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_operating_cadences WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_events WHERE ends_at<=starts_at" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_capacity_profiles WHERE weekly_capacity_hours<=0 OR daily_capacity_hours<=0 OR utilization_warning_pct>=utilization_critical_pct" | grep -qx '0'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_subscriptions WHERE token_hash=token_prefix" | grep -qx '0'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.6-section27'" | grep -qx '1'
       - name: Upload failed MariaDB output
