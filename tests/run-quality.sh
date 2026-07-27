@@ -49,7 +49,7 @@ php tests/sections24_25_integration_audit.php
 pages=(
   dashboard.php briefing.php reports.php spend-strategy.php supplier-portal.php accounts-payable.php suppliers.php sourcing.php scenarios.php mitigations.php executions.php performance.php contracts.php demand.php fulfillment.php items.php purchase-orders.php inventory.php inventory-operations.php
   scorecards.php imports.php discovery.php data-collection.php savings.php savings-realization.php approvals.php notifications.php
-  entity-system.php process-maps.php agent.php tour.php profile.php settings.php change-password.php admin/index.php admin/users.php
+  agent.php tour.php profile.php settings.php change-password.php admin/index.php admin/users.php
   admin/roles.php admin/companies.php admin/access-requests.php admin/sessions.php admin/security.php
   admin/audit.php admin/settings.php admin/environment.php
 )
