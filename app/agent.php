@@ -11,7 +11,7 @@ $workspace=executive_intelligence_agent_extend_workspace(operational_calendar_ag
 $quickPrompts=$workspace['prompts'];$metrics=$workspace['metrics'];
 $environmentLabel=data_is_demo()?'Demo session · live fictional enterprise dataset':'Production session · approved enterprise data';
 $contextLabel=data_is_demo()?'Demo evidence connected':'Production evidence connected';
-$pageActions='<a class="button secondary" href="'.h(app_url('briefing.php')).'">Open Daily Briefing</a><a class="button secondary" href="'.h(app_url('executive-command.php')).'">Open Executive Command</a><a class="button secondary" href="'.h(app_url('work-management.php')).'">Open Work Command Center</a><a class="button secondary" href="'.h(app_url('operational-calendar.php')).'">Open Operational Calendar</a>';
+$pageActions='<a class="button secondary" href="'.h(app_url('briefing.php')).'">Open Daily Briefing</a><a class="button secondary" href="'.h(app_url('executive-command.php')).'">Open Executive Command</a><a class="button secondary" href="'.h(app_url('executive-kpi-governance.php')).'">KPI Governance</a><a class="button secondary" href="'.h(app_url('work-management.php')).'">Open Work Command Center</a><a class="button secondary" href="'.h(app_url('operational-calendar.php')).'">Open Operational Calendar</a>';
 render_app_start('Agent Workspace','agent','Supervised enterprise assistants','Ask about the same goals, KPIs, process maps, purchase orders, suppliers, inventory, savings, approvals, work items, calendars, capacity, notifications and discovery records used throughout the active workspace.',$pageActions);
 ?>
 <section class="production-agent-page" id="productionAgentWorkspace">
