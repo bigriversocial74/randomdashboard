@@ -19,7 +19,8 @@ s22((int)$activated['supplier_id']===1,'Activated account must remain bound to t
 s22(count(supplier_portal_access_grants((int)$activated['id']))>=1,'Activation must create explicit company grants.');
 s22(supplier_portal_invitation_by_token($invite['activation_token'])===null,'Accepted invitations must not be reusable.');
 
-$_SESSION['gruber_supplier_account_id']=1;$_SESSION['gruber_supplier_session_started_at']=time();$_SESSION['gruber_supplier_last_activity']=time();
+supplier_portal_demo_login();
+s22(current_user()===null,'Supplier demo login must clear the internal Gruber identity.');
 $portalAccount=supplier_portal_current_account();s22($portalAccount!==null,'Seeded portal account must authenticate in isolated demo state.');
 $authorizedPos=supplier_portal_account_purchase_orders($portalAccount);s22($authorizedPos!==[],'Portal account must see authorized purchase orders.');
 foreach($authorizedPos as $po)s22((int)$po['supplier_id']===1,'Portal account must never see another supplier purchase order.');
@@ -28,17 +29,21 @@ s22(!can_use_enterprise_view($portalAccount),'Supplier portal accounts must neve
 
 $po=$authorizedPos[0];$poLines=supplier_portal_account_po_lines($portalAccount,(int)$po['id']);s22($poLines!==[],'Authorized PO lines are required.');$poLine=$poLines[0];
 $response=supplier_portal_save_po_response(['response_number'=>supplier_portal_number('POR',supplier_portal_po_responses(1)),'supplier_id'=>1,'purchase_order_id'=>$po['id'],'account_id'=>1,'response_type'=>'accept','proposed_delivery_date'=>date('Y-m-d',strtotime('+3 days')),'proposed_total_amount'=>$po['total_amount'],'currency_code'=>'USD','notes'=>'Accepted with controlled delivery evidence.','evidence_reference'=>'TEST-CONFIRM-1','status'=>'submitted','reviewed_by'=>null,'reviewed_at'=>null,'review_note'=>'']);
+$asn=supplier_portal_save_asn(['asn_number'=>'ASN-TEST-22','supplier_id'=>1,'purchase_order_id'=>$po['id'],'account_id'=>1,'ship_date'=>date('Y-m-d'),'estimated_arrival'=>date('Y-m-d',strtotime('+2 days')),'carrier'=>'Test Freight','tracking_number'=>'TRACK-22','package_count'=>2,'pallet_count'=>1,'packing_slip_reference'=>'PS-22','status'=>'submitted','reviewed_by'=>null,'reviewed_at'=>null,'review_note'=>'']);
+supplier_portal_save_asn_line(['shipment_notice_id'=>$asn['id'],'purchase_order_line_id'=>$poLine['id'],'quantity_shipped'=>1,'lot_or_serial_reference'=>'LOT-22','package_reference'=>'PKG-22','notes'=>'Controlled test shipment.']);
+$invoice=supplier_portal_save_invoice_submission(['submission_number'=>supplier_portal_number('INV-SUB',supplier_portal_invoice_submissions(1)),'supplier_id'=>1,'purchase_order_id'=>$po['id'],'account_id'=>1,'invoice_number'=>'INV-S22-UNIQUE','invoice_date'=>date('Y-m-d'),'due_date'=>date('Y-m-d',strtotime('+30 days')),'currency_code'=>'USD','subtotal'=>189.60,'freight_amount'=>0,'tax_amount'=>0,'total_amount'=>189.60,'document_reference'=>'DOC-S22-INVOICE','status'=>'submitted','duplicate_flag'=>0,'reviewed_by'=>null,'reviewed_at'=>null,'review_note'=>'','canonical_invoice_id'=>null]);
+supplier_portal_save_invoice_line(['invoice_submission_id'=>$invoice['id'],'purchase_order_line_id'=>$poLine['id'],'description'=>$poLine['description'],'quantity_invoiced'=>1,'unit_price'=>189.60,'tax_amount'=>0,'freight_amount'=>0,'line_total'=>189.60]);
+
+supplier_portal_logout();
+s22(demo_start_session(1),'Internal reviewer session must be re-established separately.');
+s22(current_user()!==null&&supplier_portal_current_account()===null,'Internal review must not retain a supplier portal identity.');
 $reviewed=supplier_portal_review('po_response',(int)$response['id'],'accepted','Internal reviewer verified supplier identity, PO scope, and delivery evidence.');
 s22($reviewed['status']==='accepted','PO response must complete internal review.');
 s22(!empty(data_find('purchase_orders',(int)$po['id'])['supplier_acknowledged_at']),'Accepted PO response must update canonical acknowledgment only after review.');
 
-$asn=supplier_portal_save_asn(['asn_number'=>'ASN-TEST-22','supplier_id'=>1,'purchase_order_id'=>$po['id'],'account_id'=>1,'ship_date'=>date('Y-m-d'),'estimated_arrival'=>date('Y-m-d',strtotime('+2 days')),'carrier'=>'Test Freight','tracking_number'=>'TRACK-22','package_count'=>2,'pallet_count'=>1,'packing_slip_reference'=>'PS-22','status'=>'submitted','reviewed_by'=>null,'reviewed_at'=>null,'review_note'=>'']);
-supplier_portal_save_asn_line(['shipment_notice_id'=>$asn['id'],'purchase_order_line_id'=>$poLine['id'],'quantity_shipped'=>1,'lot_or_serial_reference'=>'LOT-22','package_reference'=>'PKG-22','notes'=>'Controlled test shipment.']);
 $reviewedAsn=supplier_portal_review('asn',(int)$asn['id'],'accepted','ASN carrier, tracking, line quantity, and arrival date verified.');s22($reviewedAsn['status']==='accepted','ASN must complete review.');
 $profile=fulfillment_profile_for_po((int)$po['id']);s22(($profile['shipment_status']??'')==='shipped','Accepted ASN must update canonical fulfillment evidence.');
 
-$invoice=supplier_portal_save_invoice_submission(['submission_number'=>supplier_portal_number('INV-SUB',supplier_portal_invoice_submissions(1)),'supplier_id'=>1,'purchase_order_id'=>$po['id'],'account_id'=>1,'invoice_number'=>'INV-S22-UNIQUE','invoice_date'=>date('Y-m-d'),'due_date'=>date('Y-m-d',strtotime('+30 days')),'currency_code'=>'USD','subtotal'=>189.60,'freight_amount'=>0,'tax_amount'=>0,'total_amount'=>189.60,'document_reference'=>'DOC-S22-INVOICE','status'=>'submitted','duplicate_flag'=>0,'reviewed_by'=>null,'reviewed_at'=>null,'review_note'=>'','canonical_invoice_id'=>null]);
-supplier_portal_save_invoice_line(['invoice_submission_id'=>$invoice['id'],'purchase_order_line_id'=>$poLine['id'],'description'=>$poLine['description'],'quantity_invoiced'=>1,'unit_price'=>189.60,'tax_amount'=>0,'freight_amount'=>0,'line_total'=>189.60]);
 $reviewedInvoice=supplier_portal_review('invoice',(int)$invoice['id'],'accepted','Invoice number, PO line, quantity, price, and document reference verified.');
 s22((int)$reviewedInvoice['canonical_invoice_id']>0,'Accepted staged invoice must convert into canonical Section 18 invoice.');
 s22(fulfillment_find_invoice((int)$reviewedInvoice['canonical_invoice_id'])!==null,'Canonical invoice must be traceable after conversion.');
@@ -54,6 +59,7 @@ $migration=file_get_contents($root.'/database/20260727_section22_supplier_portal
 foreach(supplier_portal_tables() as $table)s22(str_contains($migration,'CREATE TABLE IF NOT EXISTS '.$table),'Migration must create '.$table.'.');
 s22(str_contains($migration,"'5.1-section22'"),'Migration version must be recorded.');
 s22(str_contains($migration,'supplier_portal.view'),'Production permission seed is required.');
+$bootstrap=file_get_contents($root.'/includes/app/bootstrap.php');s22(str_contains($bootstrap,"'/supplier-portal/'"),'Shared bootstrap must resolve Supplier Portal root paths.');
 $export=file_get_contents($root.'/includes/app/supplier_portal_export.php');s22(str_contains($export,"preg_match('/^[=+\\-@]/'"),'CSV formula-injection protection is required.');
 $portalAction=file_get_contents($root.'/supplier-portal/action.php');s22(str_contains($portalAction,'supplier_portal_account_po'),'Supplier writes must verify PO tenancy.');s22(str_contains($portalAction,'supplier_portal_invoice_duplicate'),'Invoice duplicate screening is required before acceptance.');
 $internalAction=file_get_contents($root.'/app/supplier-portal-action.php');s22(str_contains($internalAction,"require_permission('supplier_portal.review')"),'Internal conversion must require review permission.');
