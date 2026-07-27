@@ -2,17 +2,146 @@
 declare(strict_types=1);
 require_once dirname(__DIR__).'/includes/app/bootstrap.php';
 require_once dirname(__DIR__).'/includes/app/entity_system.php';
-require_app_user();if(request_method()!=='POST')redirect_to(app_url('entity-system.php'));verify_csrf();
-function entity_action_note(string$key='evidence_note'):string{$v=trim(post_string($key));if($v==='')throw new RuntimeException('Governance evidence is required.');return mb_substr($v,0,5000);}
-function entity_action_redirect(string$tab,array$params=[]):never{redirect_to(app_url('entity-system.php?'.http_build_query(array_replace(['tab'=>$tab],$params))));}
-try{$action=post_string('action');
-if($action==='apply_template'){require_permission('companies.administer');$app=entity_system_apply_template(post_string('template_code'),entity_action_note(),post_int('reviewer_id'),post_int('approved_by'));flash('success','Entity template applied: '.$app['application_number'].'.');entity_action_redirect('governance');}
-if($action==='rollback_template'){require_permission('companies.administer');entity_system_rollback_application(post_int('application_id'),entity_action_note('rollback_note'));flash('success','Template application rolled back without deleting canonical company or transaction records.');entity_action_redirect('governance');}
-if($action==='save_relationship'){require_permission('companies.administer');$from=entity_system_find_entity(post_int('from_entity_id'));$to=entity_system_find_entity(post_int('to_entity_id'));if(!$from||!$to)throw new RuntimeException('Select entities within your permitted scope.');if((int)$from['id']===(int)$to['id'])throw new RuntimeException('An entity cannot relate to itself.');$saved=entity_system_save_relationship(['id'=>null,'application_id'=>null,'from_entity_id'=>$from['id'],'to_entity_id'=>$to['id'],'relationship_type'=>post_string('relationship_type','provides_service'),'service_domain'=>post_string('service_domain','governance'),'status'=>'active','effective_from'=>post_string('effective_from',date('Y-m-d')),'effective_to'=>post_string('effective_to')?:null,'evidence_note'=>entity_action_note()]);entity_system_add_event(null,(int)$from['id'],'relationship_created','business_entity_relationship',(int)$saved['id'],null,'active','medium',$saved['evidence_note']);flash('success','Entity relationship created.');entity_action_redirect('hierarchy');}
-if($action==='save_authority'){require_permission('companies.administer');$entity=entity_system_find_entity(post_int('entity_id'));$authority=entity_system_find_entity(post_int('authority_entity_id'));if(!$entity||!$authority)throw new RuntimeException('Select entities within your permitted scope.');$saved=entity_system_save_authority(['id'=>null,'application_id'=>null,'entity_id'=>$entity['id'],'domain_code'=>post_string('domain_code'),'authority_entity_id'=>$authority['id'],'authority_mode'=>post_string('authority_mode','authoritative'),'override_policy'=>post_string('override_policy','governed_override'),'status'=>'active','effective_from'=>post_string('effective_from',date('Y-m-d')),'effective_to'=>null,'evidence_note'=>entity_action_note()]);entity_system_add_event(null,(int)$entity['id'],'authority_created','business_entity_data_authority',(int)$saved['id'],null,'active','medium',$saved['evidence_note']);flash('success','Data authority policy saved.');entity_action_redirect('authorities');}
-if($action==='save_connection'){require_permission('companies.administer');$r=['id'=>null,'connection_number'=>'INT-CONN-'.date('Ymd').'-'.str_pad((string)(count(entity_system_connections())+1),4,'0',STR_PAD_LEFT),'connection_name'=>post_string('connection_name'),'provider'=>post_string('provider'),'system_type'=>post_string('system_type','erp'),'environment'=>post_string('environment','production'),'auth_type'=>'external_secret_reference','secret_reference'=>post_string('secret_reference'),'adapter_version'=>post_string('adapter_version','1.0'),'status'=>'draft','capabilities_json'=>json_encode(array_values(array_filter(array_map('trim',explode(',',post_string('capabilities'))))),JSON_UNESCAPED_SLASHES),'last_success_at'=>null,'created_by'=>(int)current_user()['id'],'reviewer_id'=>post_int('reviewer_id'),'evidence_note'=>entity_action_note()];entity_system_validate_connection_payload($r);$saved=entity_system_save_connection($r);entity_system_add_event(null,null,'connection_created','integration_connection',(int)$saved['id'],null,'draft','medium',$saved['evidence_note']);flash('success','Integration connection metadata created. No credentials were stored.');entity_action_redirect('integrations');}
-if($action==='save_integration_binding'){require_permission('companies.administer');$connection=entity_system_find(entity_system_connections(),post_int('connection_id'));$entity=entity_system_find_entity(post_int('entity_id'));if(!$connection||!$entity)throw new RuntimeException('Select a valid connection and permitted entity.');$saved=entity_system_save_integration_binding(['id'=>null,'connection_id'=>$connection['id'],'entity_id'=>$entity['id'],'external_organization_id'=>post_string('external_organization_id'),'external_company_id'=>post_string('external_company_id'),'external_tenant_id'=>post_string('external_tenant_id'),'sync_direction'=>post_string('sync_direction','bidirectional'),'enabled_domains_json'=>json_encode(array_values(array_filter(array_map('trim',explode(',',post_string('enabled_domains'))))),JSON_UNESCAPED_SLASHES),'data_authority'=>post_string('data_authority','internal_governed'),'status'=>'draft','effective_from'=>post_string('effective_from',date('Y-m-d')),'effective_to'=>null,'evidence_note'=>entity_action_note()]);entity_system_add_event(null,(int)$entity['id'],'integration_binding_created','integration_entity_binding',(int)$saved['id'],null,'draft','medium',$saved['evidence_note']);flash('success','Entity integration binding created.');entity_action_redirect('integrations');}
-if($action==='save_mapping'){require_permission('companies.administer');$connection=entity_system_find(entity_system_connections(),post_int('connection_id'));$entity=entity_system_find_entity(post_int('entity_id'));if(!$connection||!$entity)throw new RuntimeException('Select a valid connection and entity.');$saved=entity_system_save_mapping(['id'=>null,'connection_id'=>$connection['id'],'entity_id'=>$entity['id'],'domain_code'=>post_string('domain_code'),'internal_record_type'=>post_string('internal_record_type'),'internal_record_id'=>post_int('internal_record_id'),'external_record_type'=>post_string('external_record_type'),'external_record_id'=>post_string('external_record_id'),'external_parent_id'=>post_string('external_parent_id'),'mapping_status'=>'pending_review','effective_from'=>post_string('effective_from',date('Y-m-d')),'effective_to'=>null,'evidence_note'=>entity_action_note()]);entity_system_queue_integration_event((int)$connection['id'],(int)$entity['id'],'outbox','mapping_created','external_id_mapping',(int)$saved['id'],hash('sha256','mapping|'.$connection['id'].'|'.$saved['id']),$saved,$saved['evidence_note']);flash('success','External ID mapping staged for review.');entity_action_redirect('mappings');}
-if($action==='resolve_conflict'){require_permission('companies.administer');$conflict=entity_system_find(entity_system_conflicts(),post_int('conflict_id'));if(!$conflict)throw new RuntimeException('Integration conflict not found.');if((int)$conflict['owner_id']===(int)current_user()['id'])throw new RuntimeException('Conflict resolution requires an independent reviewer.');$before=$conflict;$conflict['status']='resolved';$conflict['reviewer_id']=(int)current_user()['id'];$conflict['resolution_json']=json_encode(['decision'=>post_string('decision'),'resolved_by'=>(int)current_user()['id']],JSON_UNESCAPED_SLASHES);$conflict['evidence_note']=entity_action_note();$conflict['resolved_at']=date('Y-m-d H:i:s');entity_system_save_conflict($conflict);entity_system_add_event(null,(int)$conflict['entity_id'],'conflict_resolved','integration_conflict',(int)$conflict['id'],$before['status'],'resolved','medium',$conflict['evidence_note']);flash('success','Integration conflict resolved with independent evidence.');entity_action_redirect('governance');}
-throw new RuntimeException('Unknown entity-system action.');
-}catch(Throwable$e){flash('error',$e->getMessage());entity_action_redirect(post_string('return_tab','overview'));}
+require_app_user();
+if (request_method() !== 'POST') redirect_to(app_url('entity-system.php'));
+verify_csrf();
+
+function entity_action_note(string $key = 'evidence_note'): string
+{
+    $value = trim(post_string($key));
+    if ($value === '') throw new RuntimeException('Governance evidence is required.');
+    return mb_substr($value, 0, 5000);
+}
+
+function entity_action_redirect(string $tab, array $params = []): never
+{
+    redirect_to(app_url('entity-system.php?'.http_build_query(array_replace(['tab'=>$tab], $params))));
+}
+
+try {
+    $action = post_string('action');
+    if ($action === 'apply_template') {
+        entity_system_require_capability('apply');
+        $application = entity_system_apply_template(
+            post_string('template_code'),
+            entity_action_note(),
+            post_int('reviewer_id'),
+            post_int('approved_by')
+        );
+        flash('success', 'Entity template applied: '.$application['application_number'].'.');
+        entity_action_redirect('governance');
+    }
+    if ($action === 'rollback_template') {
+        entity_system_require_capability('administer');
+        entity_system_rollback_application(post_int('application_id'), entity_action_note('rollback_note'));
+        flash('success', 'Template application rolled back without deleting canonical company or transaction records.');
+        entity_action_redirect('governance');
+    }
+    if ($action === 'save_relationship') {
+        entity_system_require_capability('edit');
+        $from = entity_system_find_entity(post_int('from_entity_id'));
+        $to = entity_system_find_entity(post_int('to_entity_id'));
+        if (!$from || !$to) throw new RuntimeException('Select entities within your permitted scope.');
+        if ((int)$from['id'] === (int)$to['id']) throw new RuntimeException('An entity cannot relate to itself.');
+        $saved = entity_system_save_relationship([
+            'id'=>null,'application_id'=>null,'from_entity_id'=>$from['id'],'to_entity_id'=>$to['id'],
+            'relationship_type'=>post_string('relationship_type', 'provides_service'),
+            'service_domain'=>post_string('service_domain', 'governance'),'status'=>'active',
+            'effective_from'=>post_string('effective_from', date('Y-m-d')),
+            'effective_to'=>post_string('effective_to') ?: null,'evidence_note'=>entity_action_note(),
+        ]);
+        entity_system_add_event(null, (int)$from['id'], 'relationship_created', 'business_entity_relationship', (int)$saved['id'], null, 'active', 'medium', $saved['evidence_note']);
+        flash('success', 'Entity relationship created.');
+        entity_action_redirect('hierarchy');
+    }
+    if ($action === 'save_authority') {
+        entity_system_require_capability('edit');
+        $entity = entity_system_find_entity(post_int('entity_id'));
+        $authority = entity_system_find_entity(post_int('authority_entity_id'));
+        if (!$entity || !$authority) throw new RuntimeException('Select entities within your permitted scope.');
+        $saved = entity_system_save_authority([
+            'id'=>null,'application_id'=>null,'entity_id'=>$entity['id'],'domain_code'=>post_string('domain_code'),
+            'authority_entity_id'=>$authority['id'],'authority_mode'=>post_string('authority_mode', 'authoritative'),
+            'override_policy'=>post_string('override_policy', 'governed_override'),'status'=>'active',
+            'effective_from'=>post_string('effective_from', date('Y-m-d')),'effective_to'=>null,
+            'evidence_note'=>entity_action_note(),
+        ]);
+        entity_system_add_event(null, (int)$entity['id'], 'authority_created', 'business_entity_data_authority', (int)$saved['id'], null, 'active', 'medium', $saved['evidence_note']);
+        flash('success', 'Data authority policy saved.');
+        entity_action_redirect('authorities');
+    }
+    if ($action === 'save_connection') {
+        entity_system_require_capability('administer');
+        $record = [
+            'id'=>null,'connection_number'=>'INT-CONN-'.date('Ymd').'-'.str_pad((string)(count(entity_system_connections()) + 1), 4, '0', STR_PAD_LEFT),
+            'connection_name'=>post_string('connection_name'),'provider'=>post_string('provider'),
+            'system_type'=>post_string('system_type', 'erp'),'environment'=>post_string('environment', 'production'),
+            'auth_type'=>'external_secret_reference','secret_reference'=>post_string('secret_reference'),
+            'adapter_version'=>post_string('adapter_version', '1.0'),'status'=>'draft',
+            'capabilities_json'=>json_encode(array_values(array_filter(array_map('trim', explode(',', post_string('capabilities'))))), JSON_UNESCAPED_SLASHES),
+            'last_success_at'=>null,'created_by'=>(int)current_user()['id'],'reviewer_id'=>post_int('reviewer_id'),
+            'evidence_note'=>entity_action_note(),
+        ];
+        entity_system_validate_connection_payload($record);
+        $saved = entity_system_save_connection($record);
+        entity_system_add_event(null, null, 'connection_created', 'integration_connection', (int)$saved['id'], null, 'draft', 'medium', $saved['evidence_note']);
+        flash('success', 'Integration connection metadata created. No credentials were stored.');
+        entity_action_redirect('integrations');
+    }
+    if ($action === 'save_integration_binding') {
+        entity_system_require_capability('edit');
+        $connection = entity_system_find(entity_system_connections(), post_int('connection_id'));
+        $entity = entity_system_find_entity(post_int('entity_id'));
+        if (!$connection || !$entity) throw new RuntimeException('Select a valid connection and permitted entity.');
+        $saved = entity_system_save_integration_binding([
+            'id'=>null,'connection_id'=>$connection['id'],'entity_id'=>$entity['id'],
+            'external_organization_id'=>post_string('external_organization_id'),
+            'external_company_id'=>post_string('external_company_id'),'external_tenant_id'=>post_string('external_tenant_id'),
+            'sync_direction'=>post_string('sync_direction', 'bidirectional'),
+            'enabled_domains_json'=>json_encode(array_values(array_filter(array_map('trim', explode(',', post_string('enabled_domains'))))), JSON_UNESCAPED_SLASHES),
+            'data_authority'=>post_string('data_authority', 'internal_governed'),'status'=>'draft',
+            'effective_from'=>post_string('effective_from', date('Y-m-d')),'effective_to'=>null,
+            'evidence_note'=>entity_action_note(),
+        ]);
+        entity_system_add_event(null, (int)$entity['id'], 'integration_binding_created', 'integration_entity_binding', (int)$saved['id'], null, 'draft', 'medium', $saved['evidence_note']);
+        flash('success', 'Entity integration binding created.');
+        entity_action_redirect('integrations');
+    }
+    if ($action === 'save_mapping') {
+        entity_system_require_capability('edit');
+        $connection = entity_system_find(entity_system_connections(), post_int('connection_id'));
+        $entity = entity_system_find_entity(post_int('entity_id'));
+        if (!$connection || !$entity) throw new RuntimeException('Select a valid connection and entity.');
+        $saved = entity_system_save_mapping([
+            'id'=>null,'connection_id'=>$connection['id'],'entity_id'=>$entity['id'],'domain_code'=>post_string('domain_code'),
+            'internal_record_type'=>post_string('internal_record_type'),'internal_record_id'=>post_int('internal_record_id'),
+            'external_record_type'=>post_string('external_record_type'),'external_record_id'=>post_string('external_record_id'),
+            'external_parent_id'=>post_string('external_parent_id'),'mapping_status'=>'pending_review',
+            'effective_from'=>post_string('effective_from', date('Y-m-d')),'effective_to'=>null,
+            'evidence_note'=>entity_action_note(),
+        ]);
+        entity_system_queue_integration_event((int)$connection['id'], (int)$entity['id'], 'outbox', 'mapping_created', 'external_id_mapping', (int)$saved['id'], hash('sha256', 'mapping|'.$connection['id'].'|'.$saved['id']), $saved, $saved['evidence_note']);
+        flash('success', 'External ID mapping staged for review.');
+        entity_action_redirect('mappings');
+    }
+    if ($action === 'resolve_conflict') {
+        entity_system_require_capability('review');
+        $conflict = entity_system_find(entity_system_conflicts(), post_int('conflict_id'));
+        if (!$conflict) throw new RuntimeException('Integration conflict not found.');
+        if ((int)$conflict['owner_id'] === (int)current_user()['id']) throw new RuntimeException('Conflict resolution requires an independent reviewer.');
+        $before = $conflict;
+        $conflict['status'] = 'resolved';
+        $conflict['reviewer_id'] = (int)current_user()['id'];
+        $conflict['resolution_json'] = json_encode(['decision'=>post_string('decision'),'resolved_by'=>(int)current_user()['id']], JSON_UNESCAPED_SLASHES);
+        $conflict['evidence_note'] = entity_action_note();
+        $conflict['resolved_at'] = date('Y-m-d H:i:s');
+        entity_system_save_conflict($conflict);
+        entity_system_add_event(null, (int)$conflict['entity_id'], 'conflict_resolved', 'integration_conflict', (int)$conflict['id'], $before['status'], 'resolved', 'medium', $conflict['evidence_note']);
+        flash('success', 'Integration conflict resolved with independent evidence.');
+        entity_action_redirect('governance');
+    }
+    throw new RuntimeException('Unknown entity-system action.');
+} catch (Throwable $exception) {
+    flash('error', $exception->getMessage());
+    entity_action_redirect(post_string('return_tab', 'overview'));
+}
