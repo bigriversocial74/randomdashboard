@@ -18,7 +18,7 @@ $boundVersion=process_mapping_process_version($boundProcess);s28($boundVersion!=
 $context=executive_intelligence_process_context($processDefinition);s28(isset($context['instances'],$context['step_instances'],$context['exceptions']),'KPI calculations must expose process-instance, step-instance, and exception evidence.');
 $metric=executive_intelligence_metric_value($processDefinition);s28(is_float($metric),'Process-aware KPI calculation must return a deterministic numeric value.');
 
-$firstSnapshot=executive_intelligence_generate_snapshot((int)$processDefinition['id']);$repeatSnapshot=executive_intelligence_generate_snapshot((int)$processDefinition['id']);s28((int)$firstSnapshot['id']===(int)$repeatSnapshot['id'],'KPI snapshot generation must be replay-safe by definition, version, and period.');
+$periodEnd=date('Y-m-d',strtotime('-1 day'));$firstSnapshot=executive_intelligence_generate_snapshot((int)$processDefinition['id'],$periodEnd,$periodEnd);$repeatSnapshot=executive_intelligence_generate_snapshot((int)$processDefinition['id'],$periodEnd,$periodEnd);s28((int)$firstSnapshot['id']===(int)$repeatSnapshot['id'],'KPI snapshot generation must be replay-safe by definition, version, and period.');
 s28(str_contains((string)$firstSnapshot['evidence_json'],'process_instances')&&str_contains((string)$firstSnapshot['evidence_json'],'process_step_id'),'KPI snapshots must preserve process evidence references.');
 $copy=$firstSnapshot;$copy['actual_value']=(float)$copy['actual_value']+100;$unchanged=executive_intelligence_save_snapshot($copy);s28((float)$unchanged['actual_value']===(float)$firstSnapshot['actual_value'],'Historical KPI snapshot replay must return the immutable original value.');
 
