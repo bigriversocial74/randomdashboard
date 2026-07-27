@@ -1,28 +1,88 @@
 <?php
 declare(strict_types=1);
 
-function work_management_my_items(?array$user=null):array
+function work_management_my_items(?array $user=null):array
 {
-    $user??=current_user();if(!$user)return[];$roles=current_role_codes($user);return array_values(array_filter(work_management_items(),static function(array$item)use($user,$roles):bool{if((int)($item['assigned_user_id']??0)===(int)$user['id'])return true;if(empty($item['assigned_user_id'])&&in_array((string)$item['assigned_role_code'],$roles,true))return true;if((int)($item['reviewer_id']??0)===(int)$user['id']&&$item['status']==='waiting_review')return true;return(int)($item['approver_id']??0)===(int)$user['id']&&$item['status']==='waiting_approval';}));
+    $user??=current_user();if(!$user)return[];$roles=current_role_codes($user);
+    return array_values(array_filter(work_management_items(),static function(array$item)use($user,$roles):bool{
+        if((int)($item['assigned_user_id']??0)===(int)$user['id'])return true;
+        if(empty($item['assigned_user_id'])&&in_array((string)$item['assigned_role_code'],$roles,true))return true;
+        if((int)($item['reviewer_id']??0)===(int)$user['id']&&$item['status']==='waiting_review')return true;
+        return(int)($item['approver_id']??0)===(int)$user['id']&&$item['status']==='waiting_approval';
+    }));
 }
+
 function work_management_metrics():array
 {
-    $items=work_management_items();$open=array_values(array_filter($items,static fn(array$item):bool=>!in_array((string)$item['status'],['completed','cancelled'],true)));$completed=array_values(array_filter($items,static fn(array$item):bool=>$item['status']==='completed'));$onTimeCompleted=count(array_filter($completed,static fn(array$item):bool=>empty($item['due_at'])||(!empty($item['completed_at'])&&strtotime((string)$item['completed_at'])<=strtotime((string)$item['due_at']))));$notOverdueOpen=count(array_filter($open,static fn(array$item):bool=>!work_management_item_overdue($item)));$denominator=count($completed)+count($open);$response=[];$resolution=[];foreach($items as$item){if(!empty($item['claimed_at']))$response[]=max(0,strtotime((string)$item['claimed_at'])-strtotime((string)$item['created_at']));if(!empty($item['completed_at']))$resolution[]=max(0,strtotime((string)$item['completed_at'])-strtotime((string)$item['created_at']));}
-    return['total'=>count($items),'open'=>count($open),'my_work'=>count(work_management_my_items()),'critical'=>count(array_filter($open,static fn(array$item):bool=>$item['priority']==='critical')),'overdue'=>count(array_filter($open,'work_management_item_overdue')),'blocked'=>count(array_filter($open,static fn(array$item):bool=>$item['status']==='blocked')),'waiting_review'=>count(array_filter($open,static fn(array$item):bool=>in_array($item['status'],['waiting_review','waiting_approval'],true))),'completed'=>count($completed),'automation_rules'=>count(array_filter(work_management_automation_rules(),static fn(array$rule):bool=>$rule['status']==='active')),'automation_runs'=>count(work_management_automation_runs()),'sla_compliance_percent'=>$denominator?round((($onTimeCompleted+$notOverdueOpen)/$denominator)*100,1):100.0,'average_response_seconds'=>$response?(int)round(array_sum($response)/count($response)):0,'average_resolution_seconds'=>$resolution?(int)round(array_sum($resolution)/count($resolution)):0];
+    $items=work_management_items();
+    $open=array_values(array_filter($items,static fn(array$item):bool=>!in_array((string)$item['status'],['completed','cancelled'],true)));
+    $completed=array_values(array_filter($items,static fn(array$item):bool=>$item['status']==='completed'));
+    $onTimeCompleted=count(array_filter($completed,static fn(array$item):bool=>empty($item['due_at'])||(!empty($item['completed_at'])&&strtotime((string)$item['completed_at'])<=strtotime((string)$item['due_at']))));
+    $notOverdueOpen=count(array_filter($open,static fn(array$item):bool=>!work_management_item_overdue($item)));
+    $denominator=count($completed)+count($open);$response=[];$resolution=[];
+    foreach($items as$item){if(!empty($item['claimed_at']))$response[]=max(0,strtotime((string)$item['claimed_at'])-strtotime((string)$item['created_at']));if(!empty($item['completed_at']))$resolution[]=max(0,strtotime((string)$item['completed_at'])-strtotime((string)$item['created_at']));}
+    return[
+        'total'=>count($items),'open'=>count($open),'my_work'=>count(work_management_my_items()),
+        'critical'=>count(array_filter($open,static fn(array$item):bool=>$item['priority']==='critical')),
+        'overdue'=>count(array_filter($open,'work_management_item_overdue')),
+        'blocked'=>count(array_filter($open,static fn(array$item):bool=>$item['status']==='blocked')),
+        'waiting_review'=>count(array_filter($open,static fn(array$item):bool=>in_array($item['status'],['waiting_review','waiting_approval'],true))),
+        'completed'=>count($completed),
+        'automation_rules'=>count(array_filter(work_management_automation_rules(),static fn(array$rule):bool=>$rule['status']==='active')),
+        'automation_runs'=>count(work_management_automation_runs()),
+        'sla_compliance_percent'=>$denominator?round((($onTimeCompleted+$notOverdueOpen)/$denominator)*100,1):100.0,
+        'average_response_seconds'=>$response?(int)round(array_sum($response)/count($response)):0,
+        'average_resolution_seconds'=>$resolution?(int)round(array_sum($resolution)/count($resolution)):0,
+    ];
 }
+
 function work_management_analytics():array
 {
-    $byStatus=[];$byPriority=[];$bySource=[];$byCompany=[];$byUser=[];$aging=['Under 4 hours'=>0,'4–24 hours'=>0,'1–3 days'=>0,'Over 3 days'=>0];foreach(work_management_items()as$item){foreach([['status',$item['status'],&$byStatus],['priority',$item['priority'],&$byPriority],['source',$item['source_module'],&$bySource]]as$unused){}$byStatus[$item['status']]=($byStatus[$item['status']]??0)+1;$byPriority[$item['priority']]=($byPriority[$item['priority']]??0)+1;$bySource[$item['source_module']]=($bySource[$item['source_module']]??0)+1;$company=data_company_name((int)$item['company_id']);$byCompany[$company]=($byCompany[$company]??0)+1;$user=data_user_name($item['assigned_user_id']??null);$byUser[$user]=($byUser[$user]??0)+1;$age=work_management_item_age_seconds($item);if($age<14400)$aging['Under 4 hours']++;elseif($age<86400)$aging['4–24 hours']++;elseif($age<259200)$aging['1–3 days']++;else$aging['Over 3 days']++;}arsort($bySource);arsort($byCompany);arsort($byUser);$runs=work_management_automation_runs();$successful=count(array_filter($runs,static fn(array$run):bool=>$run['status']==='completed'));$failed=count(array_filter($runs,static fn(array$run):bool=>$run['status']==='failed'));$levels=[1=>0,2=>0,3=>0];foreach(work_management_escalation_events()as$event)$levels[(int)$event['to_level']]=($levels[(int)$event['to_level']]??0)+1;return['by_status'=>$byStatus,'by_priority'=>$byPriority,'by_source'=>$bySource,'by_company'=>$byCompany,'by_user'=>$byUser,'aging'=>$aging,'automation'=>['successful'=>$successful,'failed'=>$failed,'total'=>count($runs)],'escalation_levels'=>$levels,'recent_events'=>array_slice(work_management_events(),0,20),'recurring_causes'=>array_slice($bySource,0,8,true)];
+    $byStatus=[];$byPriority=[];$bySource=[];$byCompany=[];$byUser=[];
+    $aging=['Under 4 hours'=>0,'4–24 hours'=>0,'1–3 days'=>0,'Over 3 days'=>0];
+    foreach(work_management_items()as$item){
+        $status=(string)$item['status'];$priority=(string)$item['priority'];$source=(string)$item['source_module'];
+        $byStatus[$status]=($byStatus[$status]??0)+1;
+        $byPriority[$priority]=($byPriority[$priority]??0)+1;
+        $bySource[$source]=($bySource[$source]??0)+1;
+        $company=data_company_name((int)$item['company_id']);$byCompany[$company]=($byCompany[$company]??0)+1;
+        $user=data_user_name($item['assigned_user_id']??null);$byUser[$user]=($byUser[$user]??0)+1;
+        $age=work_management_item_age_seconds($item);
+        if($age<14400)$aging['Under 4 hours']++;elseif($age<86400)$aging['4–24 hours']++;elseif($age<259200)$aging['1–3 days']++;else$aging['Over 3 days']++;
+    }
+    arsort($bySource);arsort($byCompany);arsort($byUser);
+    $runs=work_management_automation_runs();
+    $successful=count(array_filter($runs,static fn(array$run):bool=>$run['status']==='completed'));
+    $failed=count(array_filter($runs,static fn(array$run):bool=>$run['status']==='failed'));
+    $levels=[1=>0,2=>0,3=>0];foreach(work_management_escalation_events()as$event)$levels[(int)$event['to_level']]=($levels[(int)$event['to_level']]??0)+1;
+    return['by_status'=>$byStatus,'by_priority'=>$byPriority,'by_source'=>$bySource,'by_company'=>$byCompany,'by_user'=>$byUser,'aging'=>$aging,'automation'=>['successful'=>$successful,'failed'=>$failed,'total'=>count($runs)],'escalation_levels'=>$levels,'recent_events'=>array_slice(work_management_events(),0,20),'recurring_causes'=>array_slice($bySource,0,8,true)];
 }
+
 function work_management_filter_items(array$filters):array
 {
-    $status=trim((string)($filters['status']??''));$priority=trim((string)($filters['priority']??''));$source=trim((string)($filters['source']??''));$owner=(int)($filters['owner']??0);$query=strtolower(trim((string)($filters['q']??'')));return array_values(array_filter(work_management_items(),static function(array$item)use($status,$priority,$source,$owner,$query):bool{if($status!==''&&(string)$item['status']!==$status)return false;if($priority!==''&&(string)$item['priority']!==$priority)return false;if($source!==''&&(string)$item['source_module']!==$source)return false;if($owner>0&&(int)($item['assigned_user_id']??0)!==$owner)return false;return$query===''||str_contains(strtolower(implode(' ',[(string)$item['work_number'],(string)$item['title'],(string)$item['description'],(string)$item['source_module']])), $query);}));
+    $status=trim((string)($filters['status']??''));$priority=trim((string)($filters['priority']??''));$source=trim((string)($filters['source']??''));$owner=(int)($filters['owner']??0);$query=strtolower(trim((string)($filters['q']??'')));
+    return array_values(array_filter(work_management_items(),static function(array$item)use($status,$priority,$source,$owner,$query):bool{
+        if($status!==''&&(string)$item['status']!==$status)return false;
+        if($priority!==''&&(string)$item['priority']!==$priority)return false;
+        if($source!==''&&(string)$item['source_module']!==$source)return false;
+        if($owner>0&&(int)($item['assigned_user_id']??0)!==$owner)return false;
+        return$query===''||str_contains(strtolower(implode(' ',[(string)$item['work_number'],(string)$item['title'],(string)$item['description'],(string)$item['source_module']])), $query);
+    }));
 }
+
 function work_management_agent_escape(mixed$value):string{return htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
+
 function work_management_agent_extend_workspace(array$workspace):array
 {
-    $metrics=work_management_metrics();$items=array_values(array_filter(work_management_items(),static fn(array$item):bool=>!in_array($item['status'],['completed','cancelled'],true)));usort($items,static function(array$a,array$b):int{$priority=['critical'=>0,'high'=>1,'medium'=>2,'low'=>3];return($priority[$a['priority']]??9)<=>($priority[$b['priority']]??9)?:strcmp((string)$a['due_at'],(string)$b['due_at']);});$rows=[];foreach(array_slice($items,0,8)as$item)$rows[]='<li><strong>'.work_management_agent_escape($item['work_number'].' · '.$item['title']).'</strong> · '.work_management_agent_escape(status_label((string)$item['priority'])).' · '.work_management_agent_escape(status_label((string)$item['status'])).' · owner '.work_management_agent_escape(data_user_name($item['assigned_user_id']??null)).' · due '.work_management_agent_escape(date_us((string)$item['due_at'],true)).'</li>';if(!$rows)$rows[]='<li>No open enterprise work is visible in the current company scope.</li>';
-    $prompt=['icon'=>'⌁','title'=>'Work command center','description'=>'Prioritize assigned work, overdue items, blockers, reviews, approvals, and escalations.','prompt'=>'Prioritize the current enterprise work queue and explain what needs attention first.','keywords'=>['work queue','my work','command center','overdue work','blocker','task','escalation','assigned'],'response_title'=>'Work Management Agent','response_html'=>'<p><strong>'.$metrics['open'].' open work items · '.$metrics['critical'].' critical · '.$metrics['overdue'].' overdue · '.$metrics['blocked'].' blocked.</strong></p><ul>'.implode('',$rows).'</ul><p>Recommendations are supervised. Confirm permissions, source evidence, separation of duties, and company scope before changing work status.</p><a class="agent-inline-link" href="'.work_management_agent_escape(app_url('work-management.php')).'">Open Work Command Center →</a>','evidence'=>[$metrics['open'].' open work items',$metrics['overdue'].' overdue',$metrics['blocked'].' blocked',$metrics['waiting_review'].' awaiting review'],'actions'=>[['type'=>'link','icon'=>'⌁','label'=>'Open command center','description'=>'Review the governed work queue','href'=>app_url('work-management.php')],['type'=>'prompt','icon'=>'!','label'=>'Prioritize critical work','description'=>'Rank action by risk and due time','prompt'=>'Rank the critical and overdue work items and recommend the next human action for each.']],'confidence'=>'High','generated_at'=>date('Y-m-d H:i:s'),'human_review'=>'Required before any operational change','missing_data'=>[]];array_unshift($workspace['prompts'],$prompt);
+    $metrics=work_management_metrics();
+    $items=array_values(array_filter(work_management_items(),static fn(array$item):bool=>!in_array($item['status'],['completed','cancelled'],true)));
+    usort($items,static function(array$a,array$b):int{$priority=['critical'=>0,'high'=>1,'medium'=>2,'low'=>3];return($priority[$a['priority']]??9)<=>($priority[$b['priority']]??9)?:strcmp((string)$a['due_at'],(string)$b['due_at']);});
+    $rows=[];foreach(array_slice($items,0,8)as$item)$rows[]='<li><strong>'.work_management_agent_escape($item['work_number'].' · '.$item['title']).'</strong> · '.work_management_agent_escape(status_label((string)$item['priority'])).' · '.work_management_agent_escape(status_label((string)$item['status'])).' · owner '.work_management_agent_escape(data_user_name($item['assigned_user_id']??null)).' · due '.work_management_agent_escape(date_us((string)$item['due_at'],true)).'</li>';
+    if(!$rows)$rows[]='<li>No open enterprise work is visible in the current company scope.</li>';
+    $prompt=['icon'=>'⌁','title'=>'Work command center','description'=>'Prioritize assigned work, overdue items, blockers, reviews, approvals, and escalations.','prompt'=>'Prioritize the current enterprise work queue and explain what needs attention first.','keywords'=>['work queue','my work','command center','overdue work','blocker','task','escalation','assigned'],'response_title'=>'Work Management Agent','response_html'=>'<p><strong>'.$metrics['open'].' open work items · '.$metrics['critical'].' critical · '.$metrics['overdue'].' overdue · '.$metrics['blocked'].' blocked.</strong></p><ul>'.implode('',$rows).'</ul><p>Recommendations are supervised. Confirm permissions, source evidence, separation of duties, and company scope before changing work status.</p><a class="agent-inline-link" href="'.work_management_agent_escape(app_url('work-management.php')).'">Open Work Command Center →</a>','evidence'=>[$metrics['open'].' open work items',$metrics['overdue'].' overdue',$metrics['blocked'].' blocked',$metrics['waiting_review'].' awaiting review'],'actions'=>[['type'=>'link','icon'=>'⌁','label'=>'Open command center','description'=>'Review the governed work queue','href'=>app_url('work-management.php')],['type'=>'prompt','icon'=>'!','label'=>'Prioritize critical work','description'=>'Rank action by risk and due time','prompt'=>'Rank the critical and overdue work items and recommend the next human action for each.']],'confidence'=>'High','generated_at'=>date('Y-m-d H:i:s'),'human_review'=>'Required before any operational change','missing_data'=>[]];
+    array_unshift($workspace['prompts'],$prompt);
     foreach(array_slice($items,0,6)as$item)$workspace['lookups'][]=['aliases'=>[strtolower((string)$item['work_number']),strtolower((string)$item['title'])],'response_title'=>'Work Management Agent','response_html'=>'<p><strong>'.work_management_agent_escape($item['work_number'].' · '.$item['title']).'</strong></p><ul><li>Company: '.work_management_agent_escape(data_company_name((int)$item['company_id'])).'</li><li>Priority: '.work_management_agent_escape(status_label((string)$item['priority'])).'</li><li>Status: '.work_management_agent_escape(status_label((string)$item['status'])).'</li><li>Owner: '.work_management_agent_escape(data_user_name($item['assigned_user_id']??null)).'</li><li>Required permission: '.work_management_agent_escape($item['required_permission']).'</li><li>Due: '.work_management_agent_escape(date_us((string)$item['due_at'],true)).'</li></ul><a class="agent-inline-link" href="'.work_management_agent_escape(app_url('work-management.php?tab=team&q='.rawurlencode((string)$item['work_number']))).'">Open work item →</a>','evidence'=>[(string)$item['work_number'],(string)$item['source_module'],(string)$item['required_permission']],'actions'=>[['type'=>'link','icon'=>'⌁','label'=>'Open work item','description'=>'Review evidence and permitted actions','href'=>app_url('work-management.php?tab=team&q='.rawurlencode((string)$item['work_number']))]],'confidence'=>'High','generated_at'=>date('Y-m-d H:i:s'),'human_review'=>'Required before any operational change','missing_data'=>[]];
-    $workspace['metrics']['work_items']=$metrics['open'];$workspace['metrics']['critical_work']=$metrics['critical'];$workspace['metrics']['overdue_work']=$metrics['overdue'];if(isset($workspace['briefing']['priorities'])){foreach(array_slice($items,0,3)as$item)$workspace['briefing']['priorities'][]=['severity'=>$item['priority'],'category'=>'Enterprise work','title'=>$item['title'],'description'=>$item['description'],'meta'=>data_user_name($item['assigned_user_id']??null).' · '.status_label($item['status']),'href'=>app_url('work-management.php?tab=team&q='.rawurlencode((string)$item['work_number'])),'action_label'=>'Open work item','agent_prompt'=>'Explain the evidence, blocker, owner, and next permitted action for '.$item['work_number'].'.'];$workspace['briefing']['priorities']=array_slice($workspace['briefing']['priorities'],0,8);}return$workspace;
+    $workspace['metrics']['work_items']=$metrics['open'];$workspace['metrics']['critical_work']=$metrics['critical'];$workspace['metrics']['overdue_work']=$metrics['overdue'];
+    if(isset($workspace['briefing']['priorities'])){foreach(array_slice($items,0,3)as$item)$workspace['briefing']['priorities'][]=['severity'=>$item['priority'],'category'=>'Enterprise work','title'=>$item['title'],'description'=>$item['description'],'meta'=>data_user_name($item['assigned_user_id']??null).' · '.status_label($item['status']),'href'=>app_url('work-management.php?tab=team&q='.rawurlencode((string)$item['work_number'])),'action_label'=>'Open work item','agent_prompt'=>'Explain the evidence, blocker, owner, and next permitted action for '.$item['work_number'].'.'];$workspace['briefing']['priorities']=array_slice($workspace['briefing']['priorities'],0,8);}
+    return$workspace;
 }
