@@ -76,7 +76,17 @@ function executive_intelligence_record_governed_decision(int$reviewId,?int$goalI
     if(in_array($ownerId,array_map('intval',[(int)$review['reviewed_by'],(int)$review['approved_by']]),true))throw new RuntimeException('Decision execution ownership must remain separate from review and approval.');
     if(trim($title)===''||trim($description)==='')throw new RuntimeException('Decision title and evidence are required.');
     if(strtotime($dueAt)<=time())throw new RuntimeException('Decision due date must be in the future.');
-    return executive_intelligence_record_decision($reviewId,$goalId,$definitionId,$type,$title,$description,$ownerId,$dueAt,$createWork);
+    $decision=executive_intelligence_record_decision($reviewId,$goalId,$definitionId,$type,$title,$description,$ownerId,$dueAt,$createWork);
+    $calendarEventId=(int)($decision['calendar_event_id']??0);
+    if($calendarEventId>0){
+        foreach(operational_calendar_raw_rows('enterprise_calendar_events','enterprise_calendar_events','operational_calendar_demo_events','starts_at,id')as$event){
+            if((int)$event['id']!==$calendarEventId)continue;
+            $event['participant_user_ids_json']=array_values(array_unique([...operational_calendar_json_ids($event['participant_user_ids_json']??[]),$userId]));
+            operational_calendar_save_event($event);
+            break;
+        }
+    }
+    return $decision;
 }
 
 function executive_intelligence_assert_published_scorecard_immutable(array$before,array$after):void
