@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/includes/app/bootstrap.php';
+require_once dirname(__DIR__).'/includes/app/process_mapping.php';
+require_app_user();if(request_method()!=='POST')redirect_to(app_url('process-maps.php'));verify_csrf();
+function process_action_note(string$key='evidence_note'):string{$note=trim(post_string($key));if($note==='')throw new RuntimeException('Governance evidence is required.');return mb_substr($note,0,5000);}
+function process_action_redirect(string$tab,array$params=[]):never{redirect_to(app_url('process-maps.php?'.http_build_query(array_replace(['tab'=>$tab],$params))));}
+try{$action=post_string('action');
+if($action==='create_from_template'){require_permission('companies.administer');$p=process_mapping_create_from_template(post_string('template_code'),process_action_note(),post_int('reviewer_id'),post_int('approver_id'));flash('success','Governed process copy created.');process_action_redirect('designer',['process_id'=>$p['id']]);}
+if($action==='publish_version'){require_permission('companies.administer');$v=process_mapping_find_version(post_int('version_id'));if(!$v)throw new RuntimeException('Process version not found.');process_mapping_publish_version($v,process_action_note());flash('success','Process version published and permanently locked.');process_action_redirect('live',['process_id'=>$v['process_id']]);}
+if($action==='save_layout'){require_permission('companies.administer');$positions=json_decode(post_string('positions_json','{}'),true);if(!is_array($positions))throw new RuntimeException('Invalid process layout payload.');process_mapping_save_layout(post_int('version_id'),$positions,process_action_note());flash('success','Draft process layout saved.');$v=process_mapping_find_version(post_int('version_id'));process_action_redirect('designer',['process_id'=>$v['process_id']??0]);}
+if($action==='start_instance'){require_permission('companies.administer');$i=process_mapping_start_instance(post_int('process_id'),post_int('entity_id'),post_string('record_type'),post_int('record_id'),post_string('instance_title'),process_action_note());flash('success','Live process instance started.');process_action_redirect('live',['process_id'=>$i['process_id'],'instance_id'=>$i['id']]);}
+if($action==='advance_step'){require_permission('companies.administer');$i=process_mapping_advance_step(post_int('step_instance_id'),post_string('decision','complete'),process_action_note());flash('success','Process step updated.');process_action_redirect('live',['process_id'=>$i['process_id'],'instance_id'=>$i['id']]);}
+if($action==='open_exception'){require_permission('companies.administer');$e=process_mapping_open_exception(post_int('step_instance_id'),post_string('exception_type'),post_string('severity','medium'),process_action_note('exception_description'),post_int('reviewer_id'));flash('success','Process exception opened for independent review.');process_action_redirect('governance',['instance_id'=>$e['instance_id']]);}
+if($action==='resolve_exception'){require_permission('companies.administer');$e=process_mapping_resolve_exception(post_int('exception_id'),process_action_note('resolution_note'));flash('success','Process exception resolved.');process_action_redirect('governance',['instance_id'=>$e['instance_id']]);}
+throw new RuntimeException('Unsupported process mapping action.');
+}catch(Throwable$e){flash('error',$e->getMessage());process_action_redirect('live');}
