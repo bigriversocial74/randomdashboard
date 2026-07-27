@@ -1,0 +1,6 @@
+<?php
+declare(strict_types=1);
+function spend_strategy_styles(): string
+{
+    return '<style>.strategy-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:20px}.strategy-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.strategy-tabs a{padding:9px 13px;border:1px solid var(--border);border-radius:999px;text-decoration:none}.strategy-tabs a.active{background:#111;color:#fff}.strategy-stack{display:grid;gap:16px}.strategy-card{border:1px solid var(--border);border-radius:16px;padding:16px;background:#fff}.strategy-card h3{margin:0 0 6px}.strategy-card dl{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.strategy-card dl div{background:#f7f7f8;padding:10px;border-radius:10px}.strategy-card dt{font-size:12px;color:#667085}.strategy-card dd{margin:4px 0 0;font-weight:700}.strategy-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.strategy-form .span-2{grid-column:1/-1}.strategy-form textarea{min-height:88px}.variance-material{color:#b42318;font-weight:700}.variance-watch{color:#b54708;font-weight:700}@media(max-width:980px){.strategy-grid{grid-template-columns:1fr}.strategy-form{grid-template-columns:1fr}.strategy-form .span-2{grid-column:auto}.strategy-card dl{grid-template-columns:1fr 1fr}}@media(max-width:620px){.strategy-card dl{grid-template-columns:1fr}}</style>';
+}
