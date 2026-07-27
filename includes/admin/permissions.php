@@ -14,6 +14,7 @@ function permission_catalog(): array
         'purchase_orders' => ['view', 'create', 'edit', 'delete', 'assign', 'submit', 'review', 'approve', 'export'],
         'inventory' => ['view', 'create', 'edit', 'delete', 'assign', 'submit', 'review', 'approve', 'export'],
         'savings' => ['view', 'create', 'edit', 'delete', 'assign', 'submit', 'review', 'approve', 'export'],
+        'strategy' => ['view', 'create', 'edit', 'assign', 'submit', 'review', 'approve', 'export'],
         'scorecards' => ['view', 'create', 'edit', 'delete', 'assign', 'submit', 'review', 'approve', 'export'],
         'imports' => ['view', 'create', 'edit', 'delete', 'submit', 'review', 'approve', 'export', 'administer'],
         'approvals' => ['view', 'submit', 'review', 'approve', 'administer'],
@@ -44,9 +45,10 @@ function role_permission_defaults(): array
         'system_administrator' => $all,
         'executive' => [
             'platform.view', 'companies.view', 'discovery.view', 'suppliers.view', 'items.view',
-            'purchase_orders.view', 'inventory.view', 'savings.view', 'scorecards.view',
-            'imports.view', 'approvals.view', 'reports.view', 'reports.export',
-            'audit.view', 'agent.view', 'settings.view',
+            'purchase_orders.view', 'inventory.view', 'savings.view', 'strategy.view',
+            'strategy.export', 'strategy.approve', 'scorecards.view', 'imports.view',
+            'approvals.view', 'reports.view', 'reports.export', 'audit.view', 'agent.view',
+            'settings.view',
         ],
         'company_administrator' => [
             'platform.view', 'users.view', 'users.create', 'users.edit', 'users.assign',
@@ -64,6 +66,8 @@ function role_permission_defaults(): array
             'inventory.submit', 'inventory.review', 'inventory.approve', 'inventory.export',
             'savings.view', 'savings.create', 'savings.edit', 'savings.assign',
             'savings.submit', 'savings.review', 'savings.approve', 'savings.export',
+            'strategy.view', 'strategy.create', 'strategy.edit', 'strategy.assign',
+            'strategy.submit', 'strategy.review', 'strategy.approve', 'strategy.export',
             'scorecards.view', 'scorecards.create', 'scorecards.edit', 'scorecards.submit',
             'scorecards.review', 'scorecards.approve', 'scorecards.export',
             'imports.view', 'imports.create', 'imports.edit', 'imports.submit',
@@ -85,6 +89,8 @@ function role_permission_defaults(): array
             'inventory.approve', 'inventory.export',
             'savings.view', 'savings.create', 'savings.edit', 'savings.assign',
             'savings.submit', 'savings.review', 'savings.approve', 'savings.export',
+            'strategy.view', 'strategy.create', 'strategy.edit', 'strategy.assign',
+            'strategy.submit', 'strategy.review', 'strategy.approve', 'strategy.export',
             'scorecards.view', 'scorecards.create', 'scorecards.edit', 'scorecards.submit',
             'scorecards.review', 'scorecards.approve', 'scorecards.export',
             'imports.view', 'imports.create', 'imports.edit', 'imports.submit',
@@ -99,7 +105,8 @@ function role_permission_defaults(): array
             'items.edit', 'items.submit', 'purchase_orders.view', 'purchase_orders.create',
             'purchase_orders.edit', 'purchase_orders.submit', 'inventory.view',
             'inventory.create', 'inventory.edit', 'inventory.submit', 'savings.view',
-            'savings.create', 'savings.edit', 'savings.submit', 'scorecards.view',
+            'savings.create', 'savings.edit', 'savings.submit', 'strategy.view',
+            'strategy.create', 'strategy.edit', 'strategy.submit', 'scorecards.view',
             'scorecards.edit', 'scorecards.submit', 'imports.view', 'imports.create',
             'imports.edit', 'imports.submit', 'approvals.view', 'reports.view', 'agent.view',
         ],
@@ -109,23 +116,24 @@ function role_permission_defaults(): array
             'items.view', 'items.review', 'items.approve', 'purchase_orders.view',
             'purchase_orders.review', 'purchase_orders.approve', 'inventory.view',
             'inventory.review', 'inventory.approve', 'savings.view', 'savings.review',
-            'savings.approve', 'scorecards.view', 'scorecards.review', 'scorecards.approve',
-            'imports.view', 'imports.review', 'imports.approve', 'approvals.view',
-            'approvals.review', 'approvals.approve', 'reports.view', 'audit.view', 'agent.view',
+            'savings.approve', 'strategy.view', 'strategy.review', 'strategy.approve',
+            'strategy.export', 'scorecards.view', 'scorecards.review',
+            'scorecards.approve', 'imports.view', 'imports.review', 'imports.approve',
+            'approvals.view', 'approvals.review', 'approvals.approve', 'reports.view',
+            'audit.view', 'agent.view',
         ],
         'read_only' => [
             'platform.view', 'companies.view', 'discovery.view', 'suppliers.view',
             'items.view', 'purchase_orders.view', 'inventory.view', 'savings.view',
-            'scorecards.view', 'imports.view', 'approvals.view', 'reports.view',
-            'agent.view', 'settings.view',
+            'strategy.view', 'scorecards.view', 'imports.view', 'approvals.view',
+            'reports.view', 'agent.view', 'settings.view',
         ],
     ];
 }
 
-
 function admin_allowed_company_modules(): array
 {
-    return ['discovery','suppliers','items','purchase_orders','inventory','savings','scorecards','imports'];
+    return ['discovery','suppliers','items','purchase_orders','inventory','savings','strategy','scorecards','imports'];
 }
 
 function admin_normalize_permissions(array $permissions): array

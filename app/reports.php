@@ -9,7 +9,8 @@ $selectedKey = query_string('report', 'executive-summary');
 if (!isset($definitions[$selectedKey])) $selectedKey = 'executive-summary';
 $report = gruber_report_dataset($selectedKey);
 $metrics = data_dashboard_metrics();
-$actions = '<button class="button secondary" type="button" data-print-page>Print report</button>';
+$actions = '<a class="button secondary" href="'.h(app_url('spend-strategy.php')).'">Spend Strategy</a>';
+$actions .= '<button class="button secondary" type="button" data-print-page>Print report</button>';
 if (can('reports.export')) {
     $actions .= '<a class="button primary" href="'.h(app_url('report-export.php?report='.rawurlencode($selectedKey))).'">Export CSV</a>';
 }
@@ -20,6 +21,11 @@ render_app_start('Reports','reports','Approved operational reporting','Open scop
     <article class="metric-card"><span>Inventory value</span><strong><?= compact_money($metrics['inventory_value']) ?></strong><small>Latest snapshots</small></article>
     <article class="metric-card"><span>Savings pipeline</span><strong><?= compact_money($metrics['savings_pipeline']) ?></strong><small>Annualized</small></article>
     <article class="metric-card"><span>Pending approvals</span><strong><?= number_format((int)$metrics['pending_approvals']) ?></strong><small>Workflow queue</small></article>
+</section>
+
+<section class="notice-card executive-briefing-notice">
+    <div><span class="notice-icon">▥</span><div><strong>Enterprise spend and category planning</strong><p>Move from operational reports into governed spend classifications, category strategies, procurement plans, and plan-versus-actual controls.</p></div></div>
+    <a href="<?= h(app_url('spend-strategy.php')) ?>">Open Spend Strategy →</a>
 </section>
 
 <section class="report-grid" aria-label="Available reports">

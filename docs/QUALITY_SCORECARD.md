@@ -22,7 +22,8 @@
 | 18 | PO fulfillment, receiving, invoice matching, and exception governance | 3.0/10 | 10/10 | Deferred migration |
 | 19 | Inventory operations, replenishment, reservations, transfers, and cycle-count governance | 2.9/10 | 10/10 | Deferred migration |
 | 20 | Savings realization, finance validation, transaction evidence, leakage, and procurement value governance | 2.8/10 | 10/10 | Deferred migration |
+| 21 | Enterprise spend analytics, category strategy, procurement planning, and plan-versus-actual governance | 2.7/10 | 10/10 | Deferred migration |
 
 ## Release decision
 
-All completed sections must pass `tests/run-quality.sh` before a release or pull request is considered merge-ready. A 10/10 score means the section satisfies its documented rubric and automated gates; it does not replace production user acceptance, backup, deployment, or security monitoring.
+All completed sections must pass `tests/run-quality.sh` before a release or pull request is merge-ready. A 10/10 score does not replace production user acceptance, backups, deployment verification, or security monitoring.

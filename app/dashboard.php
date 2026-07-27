@@ -19,7 +19,7 @@ $agentWorkspace = gruber_agent_build_workspace();
 $dailyBriefing = $agentWorkspace['briefing'];
 
 $actions = '<a class="button secondary" href="'.h(app_url('briefing.php')).'">Daily Briefing</a>';
-$actions .= '<a class="button secondary" href="'.h(app_url('imports.php')).'">Import Data</a>';
+$actions .= '<a class="button secondary" href="'.h(app_url('spend-strategy.php')).'">Spend Strategy</a>';
 if (can('agent.view')) {
     $actions .= '<a class="button primary" href="'.h(app_url('agent.php')).'">Open Agent Workspace</a>';
 }
@@ -37,6 +37,11 @@ render_app_start('Executive Dashboard','dashboard','Enterprise command center','
     <article class="metric-card"><span>Savings pipeline</span><strong><?= compact_money($metrics['savings_pipeline']) ?></strong><small>Annualized opportunity value</small><em><?= count($savings) ?> initiatives</em></article>
     <article class="metric-card"><span>Pending approvals</span><strong><?= number_format($metrics['pending_approvals']) ?></strong><small>Awaiting review or validation</small><em>Workflow</em></article>
     <article class="metric-card"><span>Data exceptions</span><strong><?= number_format($metrics['data_exceptions']) ?></strong><small>Open quality issues</small><em>Needs attention</em></article>
+</section>
+
+<section class="notice-card executive-briefing-notice">
+    <div><span class="notice-icon">▥</span><div><strong>Section 21 enterprise procurement planning</strong><p>Analyze spend concentration, contract coverage, category strategies, annual targets, and material plan variances.</p></div></div>
+    <a href="<?= h(app_url('spend-strategy.php')) ?>">Open Spend Strategy →</a>
 </section>
 
 <div class="dashboard-grid two-thirds">
