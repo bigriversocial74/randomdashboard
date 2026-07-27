@@ -1,0 +1,180 @@
+-- Gruber Procurement Intelligence
+-- Section 20: Savings Realization, Finance Validation & Procurement Value Governance
+-- Apply after Version 3 and Sections 11 through 19 migrations.
+-- Idempotent for MySQL 8.0 and MariaDB 10.11.
+
+SET NAMES utf8mb4;
+SET time_zone = '+00:00';
+
+CREATE TABLE IF NOT EXISTS savings_baselines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    version_number INT UNSIGNED NOT NULL,
+    baseline_type ENUM('historical_spend','historical_price','contract_price','budget','market_index','other') NOT NULL DEFAULT 'historical_spend',
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    baseline_volume DECIMAL(18,4) NOT NULL DEFAULT 0,
+    baseline_unit_cost DECIMAL(18,4) NOT NULL DEFAULT 0,
+    baseline_total_cost DECIMAL(18,2) NOT NULL DEFAULT 0,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    methodology TEXT NOT NULL,
+    assumptions TEXT NULL,
+    supplier_id BIGINT UNSIGNED NULL,
+    contract_id BIGINT UNSIGNED NULL,
+    status ENUM('draft','submitted','changes_requested','approved','rejected','superseded') NOT NULL DEFAULT 'draft',
+    owner_id BIGINT UNSIGNED NOT NULL,
+    reviewer_id BIGINT UNSIGNED NOT NULL,
+    approval_id BIGINT UNSIGNED NULL,
+    locked_at DATETIME NULL,
+    evidence_note TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_savings_baseline_version (opportunity_id,version_number),
+    KEY idx_savings_baseline_status (opportunity_id,status,period_end),
+    KEY idx_savings_baseline_approval (approval_id),
+    CONSTRAINT fk_savings_baseline_opportunity FOREIGN KEY (opportunity_id) REFERENCES savings_opportunities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_baseline_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+    CONSTRAINT fk_savings_baseline_contract FOREIGN KEY (contract_id) REFERENCES supplier_contracts(id),
+    CONSTRAINT fk_savings_baseline_owner FOREIGN KEY (owner_id) REFERENCES users(id),
+    CONSTRAINT fk_savings_baseline_reviewer FOREIGN KEY (reviewer_id) REFERENCES users(id),
+    CONSTRAINT fk_savings_baseline_approval FOREIGN KEY (approval_id) REFERENCES workflow_approvals(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS savings_realization_periods (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    fiscal_year INT UNSIGNED NOT NULL,
+    fiscal_period VARCHAR(24) NOT NULL,
+    planned_hard_savings DECIMAL(18,2) NOT NULL DEFAULT 0,
+    planned_cost_avoidance DECIMAL(18,2) NOT NULL DEFAULT 0,
+    planned_recoveries DECIMAL(18,2) NOT NULL DEFAULT 0,
+    planned_working_capital DECIMAL(18,2) NOT NULL DEFAULT 0,
+    actual_hard_savings DECIMAL(18,2) NOT NULL DEFAULT 0,
+    actual_cost_avoidance DECIMAL(18,2) NOT NULL DEFAULT 0,
+    actual_recoveries DECIMAL(18,2) NOT NULL DEFAULT 0,
+    actual_working_capital DECIMAL(18,2) NOT NULL DEFAULT 0,
+    implementation_cost DECIMAL(18,2) NOT NULL DEFAULT 0,
+    operating_cost DECIMAL(18,2) NOT NULL DEFAULT 0,
+    leakage_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    adjustment_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    gross_realized_value DECIMAL(18,2) NOT NULL DEFAULT 0,
+    net_realized_value DECIMAL(18,2) NOT NULL DEFAULT 0,
+    status ENUM('draft','submitted','changes_requested','validated','rejected','closed') NOT NULL DEFAULT 'draft',
+    owner_id BIGINT UNSIGNED NOT NULL,
+    reviewer_id BIGINT UNSIGNED NOT NULL,
+    approval_id BIGINT UNSIGNED NULL,
+    submitted_at DATETIME NULL,
+    validated_at DATETIME NULL,
+    closed_at DATETIME NULL,
+    evidence_note TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_savings_realization_period (opportunity_id,period_start,period_end),
+    KEY idx_savings_realization_status (opportunity_id,status,period_end),
+    KEY idx_savings_realization_fiscal (fiscal_year,fiscal_period,status),
+    KEY idx_savings_realization_approval (approval_id),
+    CONSTRAINT fk_savings_realization_opportunity FOREIGN KEY (opportunity_id) REFERENCES savings_opportunities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_realization_owner FOREIGN KEY (owner_id) REFERENCES users(id),
+    CONSTRAINT fk_savings_realization_reviewer FOREIGN KEY (reviewer_id) REFERENCES users(id),
+    CONSTRAINT fk_savings_realization_approval FOREIGN KEY (approval_id) REFERENCES workflow_approvals(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS savings_evidence_links (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    realization_period_id BIGINT UNSIGNED NULL,
+    entity_type VARCHAR(80) NOT NULL,
+    entity_id BIGINT UNSIGNED NULL,
+    evidence_reference VARCHAR(160) NULL,
+    evidence_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    evidence_date DATE NOT NULL,
+    status ENUM('linked','verified','rejected') NOT NULL DEFAULT 'linked',
+    verified_by BIGINT UNSIGNED NULL,
+    verified_at DATETIME NULL,
+    evidence_note TEXT NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_savings_evidence_opportunity (opportunity_id,evidence_date),
+    KEY idx_savings_evidence_period (realization_period_id,status),
+    KEY idx_savings_evidence_entity (entity_type,entity_id),
+    CONSTRAINT fk_savings_evidence_opportunity FOREIGN KEY (opportunity_id) REFERENCES savings_opportunities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_evidence_period FOREIGN KEY (realization_period_id) REFERENCES savings_realization_periods(id) ON DELETE SET NULL,
+    CONSTRAINT fk_savings_evidence_verifier FOREIGN KEY (verified_by) REFERENCES users(id),
+    CONSTRAINT fk_savings_evidence_creator FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS savings_finance_validations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    realization_period_id BIGINT UNSIGNED NOT NULL,
+    validation_number VARCHAR(80) NOT NULL UNIQUE,
+    reviewer_id BIGINT UNSIGNED NOT NULL,
+    decision ENUM('pending','changes_requested','validated','rejected') NOT NULL DEFAULT 'pending',
+    completeness_score INT UNSIGNED NOT NULL DEFAULT 0,
+    validated_hard_savings DECIMAL(18,2) NOT NULL DEFAULT 0,
+    validated_cost_avoidance DECIMAL(18,2) NOT NULL DEFAULT 0,
+    validated_recoveries DECIMAL(18,2) NOT NULL DEFAULT 0,
+    validated_working_capital DECIMAL(18,2) NOT NULL DEFAULT 0,
+    validated_net_value DECIMAL(18,2) NOT NULL DEFAULT 0,
+    comments TEXT NOT NULL,
+    decided_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_savings_validation_period (realization_period_id,created_at),
+    KEY idx_savings_validation_decision (opportunity_id,decision,decided_at),
+    CONSTRAINT fk_savings_validation_opportunity FOREIGN KEY (opportunity_id) REFERENCES savings_opportunities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_validation_period FOREIGN KEY (realization_period_id) REFERENCES savings_realization_periods(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_validation_reviewer FOREIGN KEY (reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS savings_leakage_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    realization_period_id BIGINT UNSIGNED NULL,
+    leakage_type ENUM('contract_price_erosion','off_contract_purchase','missed_credit','invoice_overpayment','volume_shortfall','implementation_delay','supplier_noncompliance','emergency_purchase','missed_transfer','inventory_carrying_cost','benefit_expiration','other') NOT NULL,
+    detected_date DATE NOT NULL,
+    amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    recovered_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    status ENUM('open','investigating','contained','recovered','closed') NOT NULL DEFAULT 'open',
+    owner_id BIGINT UNSIGNED NOT NULL,
+    due_date DATE NULL,
+    source_entity_type VARCHAR(80) NULL,
+    source_entity_id BIGINT UNSIGNED NULL,
+    root_cause TEXT NOT NULL,
+    corrective_action TEXT NOT NULL,
+    evidence_note TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_savings_leakage_opportunity (opportunity_id,status,due_date),
+    KEY idx_savings_leakage_period (realization_period_id,status),
+    KEY idx_savings_leakage_source (source_entity_type,source_entity_id),
+    CONSTRAINT fk_savings_leakage_opportunity FOREIGN KEY (opportunity_id) REFERENCES savings_opportunities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_leakage_period FOREIGN KEY (realization_period_id) REFERENCES savings_realization_periods(id) ON DELETE SET NULL,
+    CONSTRAINT fk_savings_leakage_owner FOREIGN KEY (owner_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS savings_governance_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    realization_period_id BIGINT UNSIGNED NULL,
+    event_type VARCHAR(80) NOT NULL,
+    from_status VARCHAR(32) NULL,
+    to_status VARCHAR(32) NULL,
+    severity VARCHAR(20) NOT NULL DEFAULT 'medium',
+    value_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    evidence_note TEXT NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_savings_governance_opportunity (opportunity_id,created_at),
+    KEY idx_savings_governance_period (realization_period_id,created_at),
+    KEY idx_savings_governance_type (event_type,created_at),
+    CONSTRAINT fk_savings_governance_opportunity FOREIGN KEY (opportunity_id) REFERENCES savings_opportunities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_savings_governance_period FOREIGN KEY (realization_period_id) REFERENCES savings_realization_periods(id) ON DELETE SET NULL,
+    CONSTRAINT fk_savings_governance_user FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO schema_migrations (version, description, checksum_sha256)
+VALUES ('4.9-section20', 'Savings baselines, periodized realization, transaction evidence, independent finance validation, leakage governance, and immutable savings events', NULL)
+ON DUPLICATE KEY UPDATE description = VALUES(description);
