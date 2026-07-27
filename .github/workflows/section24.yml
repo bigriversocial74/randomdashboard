@@ -1,0 +1,85 @@
+name: Section 24 Business Entity and Integration Foundation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  section-24-quality:
+    name: PHP ${{ matrix.php }} cumulative quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1','8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run cumulative Sections 1-24 gates
+        id: quality
+        continue-on-error: true
+        run: |
+          tests/run-quality.sh > /tmp/section24-quality.log 2>&1
+          php tests/section24_business_entities.php >> /tmp/section24-quality.log 2>&1
+          php tests/section24_render.php >> /tmp/section24-quality.log 2>&1
+      - name: Publish failed quality output
+        if: steps.quality.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section24-quality-php-${{ matrix.php }}
+          path: /tmp/section24-quality.log
+          if-no-files-found: error
+      - name: Fail unsuccessful quality gate
+        if: steps.quality.outcome == 'failure'
+        run: tail -n 400 /tmp/section24-quality.log && exit 1
+      - name: Print successful quality output
+        if: steps.quality.outcome == 'success'
+        run: cat /tmp/section24-quality.log
+  mysql-8-section-24:
+    name: MySQL 8 cumulative migrations
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 24 twice
+        run: |
+          for file in database/gruber_ai_procurement_single_install_v3.sql database/20260726_section11_supplier_comparison.sql database/20260726_section12_procurement_scenarios.sql database/20260726_section13_mitigation_action_plans.sql database/20260726_section14_execution_recovery_verification.sql database/20260726_section15_supplier_performance_improvement.sql database/20260726_section16_contract_lifecycle_renewal_governance.sql database/20260727_section17_demand_requisition_budget_governance.sql database/20260727_section18_fulfillment_receiving_invoice_match.sql database/20260727_section19_inventory_operations_replenishment_governance.sql database/20260727_section20_savings_realization_finance_governance.sql database/20260727_section21_enterprise_spend_category_strategy_planning.sql database/20260727_section22_supplier_portal_collaboration_exchange.sql database/20260727_section23_accounts_payable_payment_close_governance.sql database/20260727_section24_business_entity_integration_foundation.sql database/20260727_section24_business_entity_integration_foundation.sql; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12','4.2-section13','4.3-section14','4.4-section15','4.5-section16','4.6-section17','4.7-section18','4.8-section19','4.9-section20','5.0-section21','5.1-section22','5.2-section23','5.3-section24')" | grep -qx '14'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('business_entities','business_entity_relationships','business_entity_company_bindings','business_entity_module_profiles','business_entity_data_authorities','business_entity_access_scopes','business_entity_templates','business_entity_template_applications','integration_connections','integration_entity_bindings','external_id_mappings','integration_sync_runs','integration_events','integration_conflicts','business_entity_events')" | grep -qx '15'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_entity_company_bindings" | grep -qx '6'
+  mariadb-section-24:
+    name: MariaDB 10.11 cumulative migrations
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 24 twice
+        run: |
+          for file in database/gruber_ai_procurement_single_install_v3.sql database/20260726_section11_supplier_comparison.sql database/20260726_section12_procurement_scenarios.sql database/20260726_section13_mitigation_action_plans.sql database/20260726_section14_execution_recovery_verification.sql database/20260726_section15_supplier_performance_improvement.sql database/20260726_section16_contract_lifecycle_renewal_governance.sql database/20260727_section17_demand_requisition_budget_governance.sql database/20260727_section18_fulfillment_receiving_invoice_match.sql database/20260727_section19_inventory_operations_replenishment_governance.sql database/20260727_section20_savings_realization_finance_governance.sql database/20260727_section21_enterprise_spend_category_strategy_planning.sql database/20260727_section22_supplier_portal_collaboration_exchange.sql database/20260727_section23_accounts_payable_payment_close_governance.sql database/20260727_section24_business_entity_integration_foundation.sql database/20260727_section24_business_entity_integration_foundation.sql; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('4.0-section11','4.1-section12','4.2-section13','4.3-section14','4.4-section15','4.5-section16','4.6-section17','4.7-section18','4.8-section19','4.9-section20','5.0-section21','5.1-section22','5.2-section23','5.3-section24')" | grep -qx '14'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('business_entities','business_entity_relationships','business_entity_company_bindings','business_entity_module_profiles','business_entity_data_authorities','business_entity_access_scopes','business_entity_templates','business_entity_template_applications','integration_connections','integration_entity_bindings','external_id_mappings','integration_sync_runs','integration_events','integration_conflicts','business_entity_events')" | grep -qx '15'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_entity_company_bindings" | grep -qx '6'
