@@ -72,7 +72,10 @@ function supplier_portal_login(string $email,string $password): bool
     $valid=$account&&($account['status']??'')==='active'&&!empty($account['email_verified_at'])&&$unlocked&&password_verify($password,(string)($account['password_hash']??''));
     if(!$valid){$attempts['count']=(int)$attempts['count']+1;$_SESSION[$attemptKey]=$attempts;$_SESSION['gruber_supplier_login_error']='Sign-in failed. Check the email address and password.';return false;}
     unset($_SESSION[$attemptKey]);session_regenerate_id(true);
-    unset($_SESSION['gruber_csrf'],$_SESSION['gruber_production_user_id'],$_SESSION['gruber_production_company_id']);
+    unset(
+        $_SESSION['gruber_csrf'],$_SESSION['gruber_production_user_id'],$_SESSION['gruber_production_company_id'],
+        $_SESSION['gruber_demo_user_id'],$_SESSION['gruber_demo_company_id'],$_SESSION['gruber_pending_environment']
+    );
     $_SESSION['gruber_supplier_account_id']=(int)$account['id'];
     $_SESSION['gruber_supplier_session_started_at']=time();$_SESSION['gruber_supplier_last_activity']=time();
     $account['last_login_at']=date('Y-m-d H:i:s');supplier_portal_save_account($account);
@@ -85,6 +88,10 @@ function supplier_portal_demo_login(): bool
     $_SESSION['gruber_demo_mode']=true;
     if(!isset($_SESSION['gruber_demo_state'])||!is_array($_SESSION['gruber_demo_state']))$_SESSION['gruber_demo_state']=demo_default_state();
     session_regenerate_id(true);
+    unset(
+        $_SESSION['gruber_csrf'],$_SESSION['gruber_production_user_id'],$_SESSION['gruber_production_company_id'],
+        $_SESSION['gruber_demo_user_id'],$_SESSION['gruber_demo_company_id'],$_SESSION['gruber_pending_environment']
+    );
     $_SESSION['gruber_supplier_account_id']=1;$_SESSION['gruber_supplier_session_started_at']=time();$_SESSION['gruber_supplier_last_activity']=time();
     return true;
 }
