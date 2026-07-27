@@ -42,7 +42,7 @@ Deferred migration:
 
 `database/20260726_section13_mitigation_action_plans.sql`
 
-- Dependencies: corrected Version 3 schema, Section 11 migration, and Section 12 migration.
+- Dependencies: corrected Version 3 schema, the Section 11 migration, and the Section 12 migration.
 - Purpose: creates `procurement_mitigation_plans` and `procurement_mitigation_actions` for governed contingency triggers, scenario linkage, supplier/category scope, action ownership, due dates, execution state, cost, recovery value, service-risk reduction, readiness, approval reference, activation evidence, and containment tracking.
 - Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record; the Section 13 workflow imports this migration twice on both database engines.
 - Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
@@ -127,11 +127,24 @@ Deferred migration:
 - Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, Section 14 migration, Section 15 migration, Section 16 migration, Section 17 migration, Section 18 migration, then Section 19 migration.
 - Existing installation behavior before import: canonical inventory balances, transactions, and cycle counts remain readable and Demo Mode operations remain available; Production Data policy, recommendation, reservation, transfer, event, controlled-movement, and approval-gated inventory-governance writes are intentionally blocked until all seven Section 19 tables exist.
 
+## Section 20 — Savings Realization, Finance Validation & Procurement Value Governance
+
+Deferred migration:
+
+`database/20260727_section20_savings_realization_finance_governance.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11 through Section 19 migrations.
+- Purpose: preserves `savings_opportunities` as the canonical opportunity record while adding versioned baselines, fiscal realization periods, transaction evidence links, independent finance validations, leakage records, and immutable savings governance events.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record; the Section 20 workflow imports this migration twice on MySQL 8.0 and MariaDB 10.11.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, Section 14 migration, Section 15 migration, Section 16 migration, Section 17 migration, Section 18 migration, Section 19 migration, then Section 20 migration.
+- Existing installation behavior before import: canonical savings opportunities remain readable and Demo Mode realization governance remains available; Production Data baseline, period, evidence, validation, leakage, event, finance-rollup, and period-close writes are intentionally blocked until all six Section 20 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
-- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 order.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 → Section 20 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.
