@@ -31,7 +31,9 @@ function all_permissions(): array
 {
     $out = [];
     foreach (permission_catalog() as $area => $actions) {
-        foreach ($actions as $action) $out[] = $area . '.' . $action;
+        foreach ($actions as $action) {
+            $out[] = $area . '.' . $action;
+        }
     }
     return $out;
 }
@@ -39,13 +41,16 @@ function all_permissions(): array
 function role_permission_defaults(): array
 {
     $all = all_permissions();
+
     return [
         'system_administrator' => $all,
         'executive' => [
-            'platform.view', 'companies.view', 'discovery.view', 'suppliers.view', 'supplier_portal.view',
-            'items.view', 'purchase_orders.view', 'inventory.view', 'savings.view', 'strategy.view',
+            'platform.view', 'companies.view', 'discovery.view', 'suppliers.view',
+            'supplier_portal.view', 'supplier_portal.export', 'items.view',
+            'purchase_orders.view', 'inventory.view', 'savings.view', 'strategy.view',
             'strategy.export', 'strategy.approve', 'scorecards.view', 'imports.view',
-            'approvals.view', 'reports.view', 'reports.export', 'audit.view', 'agent.view', 'settings.view',
+            'approvals.view', 'reports.view', 'reports.export', 'audit.view', 'agent.view',
+            'settings.view',
         ],
         'company_administrator' => [
             'platform.view', 'users.view', 'users.create', 'users.edit', 'users.assign',
@@ -120,9 +125,10 @@ function role_permission_defaults(): array
             'purchase_orders.review', 'purchase_orders.approve', 'inventory.view',
             'inventory.review', 'inventory.approve', 'savings.view', 'savings.review',
             'savings.approve', 'strategy.view', 'strategy.review', 'strategy.approve',
-            'strategy.export', 'scorecards.view', 'scorecards.review', 'scorecards.approve',
-            'imports.view', 'imports.review', 'imports.approve', 'approvals.view',
-            'approvals.review', 'approvals.approve', 'reports.view', 'audit.view', 'agent.view',
+            'strategy.export', 'scorecards.view', 'scorecards.review',
+            'scorecards.approve', 'imports.view', 'imports.review', 'imports.approve',
+            'approvals.view', 'approvals.review', 'approvals.approve', 'reports.view',
+            'audit.view', 'agent.view',
         ],
         'read_only' => [
             'platform.view', 'companies.view', 'discovery.view', 'suppliers.view',
@@ -140,15 +146,27 @@ function admin_allowed_company_modules(): array
 
 function admin_normalize_permissions(array $permissions): array
 {
-    $allowed = array_fill_keys(all_permissions(), true);$normalized = [];
-    foreach ($permissions as $permission) { $permission=trim((string)$permission); if($permission!==''&&isset($allowed[$permission]))$normalized[$permission]=true; }
+    $allowed = array_fill_keys(all_permissions(), true);
+    $normalized = [];
+    foreach ($permissions as $permission) {
+        $permission = trim((string) $permission);
+        if ($permission !== '' && isset($allowed[$permission])) {
+            $normalized[$permission] = true;
+        }
+    }
     return array_keys($normalized);
 }
 
 function admin_normalize_modules(array $modules): array
 {
-    $allowed=array_fill_keys(admin_allowed_company_modules(),true);$normalized=[];
-    foreach($modules as $module){$module=trim((string)$module);if($module!==''&&isset($allowed[$module]))$normalized[$module]=true;}
+    $allowed = array_fill_keys(admin_allowed_company_modules(), true);
+    $normalized = [];
+    foreach ($modules as $module) {
+        $module = trim((string) $module);
+        if ($module !== '' && isset($allowed[$module])) {
+            $normalized[$module] = true;
+        }
+    }
     return array_keys($normalized);
 }
 
