@@ -46,8 +46,9 @@ $visiblePoIds = array_map('intval', array_column($purchaseOrders, 'id'));
 $visibleLines = array_values(array_filter($purchaseOrderLines, static fn(array $line): bool => in_array((int)($line['purchase_order_id'] ?? 0), $visiblePoIds, true)));
 $transferCandidates = gruber_agent_build_transfer_candidates($purchaseOrders, $visibleLines, $allSnapshots, $items, $companies);
 $topTransfer = $transferCandidates[0] ?? null;
+$actions='<a class="button primary" href="'.h(app_url('inventory-operations.php')).'">Inventory Operations</a><a class="button secondary" href="'.h(app_url('fulfillment.php')).'">Receiving & Invoice Match</a>';
 
-render_app_start('Inventory Snapshots','inventory','Inventory position and aging','Review current custody, available and allocated quantities, aging classifications, and evidence-based internal transfer opportunities.','');
+render_app_start('Inventory Snapshots','inventory','Inventory position and aging','Review current custody, available and allocated quantities, aging classifications, and evidence-based internal transfer opportunities.',$actions);
 ?>
 <section class="metric-grid metric-grid-4">
     <article class="metric-card"><span>Inventory value</span><strong><?= compact_money($totalValue) ?></strong><small>Latest visible snapshots</small></article>
@@ -59,10 +60,10 @@ render_app_start('Inventory Snapshots','inventory','Inventory position and aging
 <?php if ($topTransfer): ?>
 <section class="notice-card opportunity-notice">
     <div><span class="notice-icon">↔</span><div><strong><?= h($topTransfer['source_company']) ?> may cover demand for <?= h($topTransfer['destination_company']) ?></strong><p><?= h($topTransfer['item_number']) ?> · <?= number_format((float)$topTransfer['candidate_quantity'], 2) ?> <?= h($topTransfer['uom']) ?> screened against <?= h($topTransfer['po_number']) ?>. Confirm specification, custody, reservations, condition, freight and required date before changing the purchase order.</p></div></div>
-    <a href="<?= h(app_url('agent.php?prompt='.rawurlencode('Review the cross-company transfer candidate for '.$topTransfer['item_number'].' and '.$topTransfer['po_number'].', including evidence and required human checks.'))) ?>">Analyze evidence →</a>
+    <div class="inline-actions"><a href="<?= h(app_url('inventory-operations.php#transfers')) ?>">Govern transfer →</a><a href="<?= h(app_url('agent.php?prompt='.rawurlencode('Review the cross-company transfer candidate for '.$topTransfer['item_number'].' and '.$topTransfer['po_number'].', including evidence and required human checks.'))) ?>">Analyze evidence →</a></div>
 </section>
 <?php else: ?>
-<section class="notice-card"><div><span class="notice-icon">✓</span><div><strong>No supported transfer candidate is visible</strong><p>The active company scope has no open PO line matched to positive inventory in another permitted company.</p></div></div><a href="<?= h(app_url('purchase-orders.php')) ?>">Review commitments →</a></section>
+<section class="notice-card"><div><span class="notice-icon">✓</span><div><strong>No supported transfer candidate is visible</strong><p>The active company scope has no open PO line matched to positive inventory in another permitted company.</p></div></div><a href="<?= h(app_url('inventory-operations.php')) ?>">Review operations →</a></section>
 <?php endif; ?>
 
 <section class="panel">

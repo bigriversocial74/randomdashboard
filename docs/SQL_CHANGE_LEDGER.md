@@ -114,11 +114,24 @@ Deferred migration:
 - Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, Section 14 migration, Section 15 migration, Section 16 migration, Section 17 migration, then Section 18 migration.
 - Existing installation behavior before import: canonical purchase orders and existing receipt data remain readable and Demo Mode fulfillment governance remains available; Production Data profile, invoice, match, exception, event, payment-release, and governed inventory-posting writes are intentionally blocked until all six Section 18 tables exist.
 
+## Section 19 — Inventory Operations, Replenishment & Internal Transfer Governance
+
+Deferred migration:
+
+`database/20260727_section19_inventory_operations_replenishment_governance.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11 through Section 18 migrations.
+- Purpose: preserves inventory locations, balances, transactions, cycle counts, and count lines as canonical records while adding replenishment policies, replenishment recommendations, reservations, internal transfer requests and lines, transfer events, and immutable inventory governance events.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS` and an idempotent `schema_migrations` record; the Section 19 workflow imports this migration twice on MySQL 8.0 and MariaDB 10.11.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Section 11 migration, Section 12 migration, Section 13 migration, Section 14 migration, Section 15 migration, Section 16 migration, Section 17 migration, Section 18 migration, then Section 19 migration.
+- Existing installation behavior before import: canonical inventory balances, transactions, and cycle counts remain readable and Demo Mode operations remain available; Production Data policy, recommendation, reservation, transfer, event, controlled-movement, and approval-gated inventory-governance writes are intentionally blocked until all seven Section 19 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
-- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 order.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.
