@@ -80,7 +80,8 @@ $formRecord = $editingRecord ?: [
     'review_status'=>'draft',
 ];
 
-$actions = '<a class="button secondary" href="'.h(app_url('agent.php?prompt='.rawurlencode('Prioritize the current savings pipeline and identify the next decision for each leading opportunity.'))).'">Ask Savings Agent</a>';
+$actions = '<a class="button secondary" href="'.h(app_url('savings-realization.php')).'">Finance Realization</a>';
+$actions .= '<a class="button secondary" href="'.h(app_url('agent.php?prompt='.rawurlencode('Prioritize the current savings pipeline and identify the next decision for each leading opportunity.'))).'">Ask Savings Agent</a>';
 if (can('savings.create')) $actions .= '<a class="button primary" href="'.h(app_url('savings.php?new=1')).'">Create Opportunity</a>';
 
 render_app_start(
@@ -151,6 +152,7 @@ render_app_start(
                 <?php if (!empty($item['next_step'])): ?><div class="savings-next-step"><span>Next step</span><p><?= h($item['next_step']) ?></p></div><?php endif; ?>
                 <footer class="savings-card-actions">
                     <a class="mini-button secondary" href="<?= h(app_url('savings.php?edit='.(int)$item['id'])) ?>"><?= can('savings.edit') ? 'Edit' : 'View' ?></a>
+                    <a class="mini-button secondary" href="<?= h(app_url('savings-realization.php?id='.(int)$item['id'])) ?>">Realization</a>
                     <?php if ($nextStage && can('savings.edit')): ?>
                         <form action="<?= h(app_url('action.php')) ?>" method="post"><?= csrf_field() ?><input type="hidden" name="action" value="advance_savings_stage"><input type="hidden" name="id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="return_to" value="<?= h($returnTo) ?>"><button class="mini-button primary" type="submit">Move to <?= h($stageDefinitions[$nextStage]['short']) ?></button></form>
                     <?php elseif ((string)($item['stage'] ?? '') === 'approved'): ?>
