@@ -6,7 +6,9 @@ require_app_user();
 if(request_method()!=='POST'){http_response_code(405);exit('Method not allowed.');}
 verify_csrf();$action=post_string('action');$return='operational-calendar.php';
 try{
-    if($action==='create_event'){
+    if($action==='sync_work_items'){
+        require_permission('operational_calendar.create');$created=operational_calendar_sync_work_items();flash('success',$created.' work deadline'.($created===1?' was':'s were').' added to the governed calendar.');
+    }elseif($action==='create_event'){
         require_permission('operational_calendar.create');$starts=str_replace('T',' ',post_string('starts_at'));$ends=str_replace('T',' ',post_string('ends_at'));$number='CAL-'.date('Ymd').'-'.strtoupper(substr(bin2hex(random_bytes(4)),0,8));
         operational_calendar_save_event(['id'=>null,'event_number'=>$number,'source_key'=>hash('sha256','manual|'.$number),'source_module'=>'operational_calendar','source_type'=>'manual_event','source_id'=>0,'entity_id'=>post_int('entity_id'),'owner_user_id'=>(int)current_user()['id'],'title'=>mb_substr(post_string('title'),0,190),'description'=>mb_substr(post_string('description'),0,5000),'event_type'=>post_string('event_type','meeting'),'visibility'=>post_string('visibility','company'),'participant_user_ids_json'=>[],'starts_at'=>$starts,'ends_at'=>$ends,'all_day'=>0,'status'=>'scheduled','location'=>mb_substr(post_string('location'),0,240),'required_permission'=>'operational_calendar.view','created_by'=>(int)current_user()['id']]);flash('success','Calendar event created.');
     }elseif($action==='save_capacity'){
