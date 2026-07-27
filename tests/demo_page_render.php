@@ -5,7 +5,7 @@ $root = dirname(__DIR__);
 $page = $argv[1] ?? '';
 $required = array_slice($argv, 2);
 $allowed = [
-    'dashboard.php','briefing.php','reports.php','suppliers.php','sourcing.php','scenarios.php','mitigations.php','executions.php','performance.php','items.php','purchase-orders.php',
+    'dashboard.php','briefing.php','reports.php','suppliers.php','sourcing.php','scenarios.php','mitigations.php','executions.php','performance.php','contracts.php','items.php','purchase-orders.php',
     'inventory.php','scorecards.php','imports.php','discovery.php','data-collection.php','agent.php','savings.php','approvals.php','tour.php',
     'notifications.php','profile.php','settings.php','change-password.php','admin/index.php','admin/users.php',
     'admin/roles.php','admin/companies.php','admin/access-requests.php','admin/sessions.php',

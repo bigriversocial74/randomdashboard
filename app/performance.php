@@ -15,6 +15,7 @@ $actions=$selected?performance_actions((int)$selected['id']):[];$events=$selecte
 if(query_string('export')==='csv'&&$selected)performance_export_csv($selected,$actions,$events);
 $agentPrompt='Review supplier performance '.($selected['review_number']??'blueprint').' for '.($supplier['name']??'the selected supplier').'. Evaluate 30/60/90-day recovery sustainability, scorecard trends, delivery, quality, fill rate, service, lead-time variance, defects, price variance, corrective actions, repeated failures, spend exposure, retained savings, risk tier, supplier recommendation, and feedback to sourcing, risk scenarios, mitigation readiness, and execution targets.';
 $headerActions='<a class="button ghost" href="'.h(app_url('scorecards.php')).'">Supplier Scorecards</a>';
+if($supplier)$headerActions.='<a class="button ghost" href="'.h(app_url('contracts.php?supplier_id='.(int)$supplier['id'])).'">Commercial Governance</a>';
 if($execution)$headerActions.='<a class="button ghost" href="'.h(app_url('executions.php?id='.(int)$execution['id'])).'">Recovery Evidence</a>';
 if($selected&&can('reports.export'))$headerActions.='<a class="button secondary" href="'.h(app_url('performance.php?id='.(int)$selected['id'].'&export=csv')).'">Export Review</a>';
 $headerActions.='<a class="button primary" href="'.h(app_url('agent.php?prompt='.rawurlencode($agentPrompt))).'">Analyze in Agent</a>';

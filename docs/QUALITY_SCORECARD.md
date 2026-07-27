@@ -17,6 +17,7 @@
 | 13 | Mitigation action plans and supplier contingency management | 3.5/10 | 10/10 | Deferred migration |
 | 14 | Mitigation execution, recovery verification, and procurement change control | 3.4/10 | 10/10 | Deferred migration |
 | 15 | Supplier performance monitoring, corrective action, and continuous improvement | 3.3/10 | 10/10 | Deferred migration |
+| 16 | Contract lifecycle, SLA compliance, and renewal governance | 3.2/10 | 10/10 | Deferred migration |
 
 ## Release decision
 
