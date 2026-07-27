@@ -19,6 +19,7 @@
 | 15 | Supplier performance monitoring, corrective action, and continuous improvement | 3.3/10 | 10/10 | Deferred migration |
 | 16 | Contract lifecycle, SLA compliance, and renewal governance | 3.2/10 | 10/10 | Deferred migration |
 | 17 | Demand intake, purchase requisitions, and budget governance | 3.1/10 | 10/10 | Deferred migration |
+| 18 | PO fulfillment, receiving, invoice matching, and exception governance | 3.0/10 | 10/10 | Deferred migration |
 
 ## Release decision
 
