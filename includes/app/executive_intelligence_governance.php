@@ -69,6 +69,7 @@ function executive_intelligence_record_governed_decision(int$reviewId,?int$goalI
     $userId=(int)(current_user()['id']??0);
     $participants=array_map('intval',[(int)$review['prepared_by'],(int)$review['reviewed_by'],(int)$review['approved_by']]);
     if(!in_array($userId,$participants,true)&&!can('executive_intelligence.administer'))throw new RuntimeException('Only a governed review participant may record its decisions.');
+    if($createWork&&$userId===(int)$review['approved_by'])throw new RuntimeException('The final executive approver cannot create work they are assigned to approve.');
     $reviewCompany=(int)($review['company_id']??0);
     if($goalId){$goal=executive_intelligence_find_goal($goalId);if(!$goal)throw new RuntimeException('Decision goal is outside the active scope.');$goalCompany=(int)($goal['company_id']??0);if($goalCompany>0&&$goalCompany!==$reviewCompany)throw new RuntimeException('Decision goal belongs to a different operating company.');}
     if($definitionId){$definition=executive_intelligence_find_definition($definitionId);if(!$definition)throw new RuntimeException('Decision KPI is outside the active scope.');$definitionCompany=(int)($definition['company_id']??0);if($definitionCompany>0&&$definitionCompany!==$reviewCompany)throw new RuntimeException('Decision KPI belongs to a different operating company.');}
