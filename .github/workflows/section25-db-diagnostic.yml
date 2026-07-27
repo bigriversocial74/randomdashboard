@@ -1,0 +1,57 @@
+name: Section 25 Database Diagnostic
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  database-diagnostic:
+    name: ${{ matrix.engine }} Section 25 diagnostic
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: MySQL 8
+            image: mysql:8.0
+            health: mysqladmin ping -h 127.0.0.1 -proot
+          - engine: MariaDB 10.11
+            image: mariadb:10.11
+            health: healthcheck.sh --connect --innodb_initialized
+    services:
+      database:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gruber_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="${{ matrix.health }}"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Run captured cumulative migration
+        id: database
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            for file in database/gruber_ai_procurement_single_install_v3.sql database/20260726_section11_supplier_comparison.sql database/20260726_section12_procurement_scenarios.sql database/20260726_section13_mitigation_action_plans.sql database/20260726_section14_execution_recovery_verification.sql database/20260726_section15_supplier_performance_improvement.sql database/20260726_section16_contract_lifecycle_renewal_governance.sql database/20260727_section17_demand_requisition_budget_governance.sql database/20260727_section18_fulfillment_receiving_invoice_match.sql database/20260727_section19_inventory_operations_replenishment_governance.sql database/20260727_section20_savings_realization_finance_governance.sql database/20260727_section21_enterprise_spend_category_strategy_planning.sql database/20260727_section22_supplier_portal_collaboration_exchange.sql database/20260727_section23_accounts_payable_payment_close_governance.sql database/20260727_section24_business_entity_integration_foundation.sql database/20260727_section25_process_mapping_orchestration_control_intelligence.sql database/20260727_section25_process_mapping_orchestration_control_intelligence.sql; do
+              echo "===== IMPORTING ${file} ====="
+              mysql --show-warnings --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"
+            done
+            echo "===== COUNTS ====="
+            mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT version FROM gruber_test.schema_migrations ORDER BY version"
+            mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) templates FROM gruber_test.business_processes WHERE is_template=1; SELECT COUNT(*) steps FROM gruber_test.business_process_steps"
+          } 2>&1 | tee /tmp/section25-database.log
+      - name: Upload diagnostic output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: section25-database-${{ matrix.engine }}
+          path: /tmp/section25-database.log
+          if-no-files-found: error
+      - name: Fail unsuccessful database diagnostic
+        if: steps.database.outcome == 'failure'
+        run: tail -n 300 /tmp/section25-database.log && exit 1
