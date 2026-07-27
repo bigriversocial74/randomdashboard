@@ -6,6 +6,16 @@ require_app_user();
 if(request_method()!=='POST')redirect_to(app_url('demand.php'));
 verify_csrf();
 
+if(!function_exists('data_default_company_id')){
+    function data_default_company_id(array $user): int
+    {
+        $permitted=permitted_company_ids($user);
+        if(current_company_id()!=='enterprise')return (int)current_company_id();
+        $primary=(int)($user['primary_company_id']??0);
+        return in_array($primary,$permitted,true)?$primary:(int)($permitted[0]??0);
+    }
+}
+
 function demand_valid_date(string $value,bool $allowBlank=false): ?string
 {
     if($allowBlank&&$value==='')return null;
