@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS business_process_integrations (
   status VARCHAR(32) NOT NULL DEFAULT 'active',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_process_integration(step_id,event_type,direction),
   KEY idx_process_integration_step(step_id,status),
   KEY idx_process_integration_event(event_type,status),
   CONSTRAINT fk_process_integration_step FOREIGN KEY(step_id) REFERENCES business_process_steps(id) ON DELETE CASCADE,
@@ -355,8 +356,12 @@ INSERT IGNORE INTO business_process_assignments(process_id,entity_id,assignment_
 SELECT @p2p,b.entity_id,'applicable','source_to_pay','template','active',CURRENT_DATE
 FROM business_entity_company_bindings b;
 
-INSERT IGNORE INTO business_process_events(process_id,version_id,event_type,from_status,to_status,severity,evidence_note,created_by)
-VALUES(@p2p,@p2pv,'process_template_seeded',NULL,'published','medium','Section 25 seeded the complete visual procure-to-pay reference process without changing canonical transaction relationships.',@system_admin);
+INSERT INTO business_process_events(process_id,version_id,event_type,from_status,to_status,severity,evidence_note,created_by)
+SELECT @p2p,@p2pv,'process_template_seeded',NULL,'published','medium','Section 25 seeded the complete visual procure-to-pay reference process without changing canonical transaction relationships.',@system_admin
+WHERE NOT EXISTS (
+  SELECT 1 FROM business_process_events
+  WHERE process_id=@p2p AND version_id=@p2pv AND event_type='process_template_seeded'
+);
 
 INSERT IGNORE INTO schema_migrations(version,description)
 VALUES('5.4-section25','Section 25 enterprise process mapping, visual orchestration, live instances, controls, integrations, exceptions, and process intelligence');
