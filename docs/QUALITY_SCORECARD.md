@@ -23,6 +23,7 @@
 | 19 | Inventory operations, replenishment, reservations, transfers, and cycle-count governance | 2.9/10 | 10/10 | Deferred migration |
 | 20 | Savings realization, finance validation, transaction evidence, leakage, and procurement value governance | 2.8/10 | 10/10 | Deferred migration |
 | 21 | Enterprise spend analytics, category strategy, procurement planning, and plan-versus-actual governance | 2.7/10 | 10/10 | Deferred migration |
+| 22 | Supplier portal identities, PO/ASN/invoice staging, documents, sourcing, quality, and external collaboration | 2.6/10 | 10/10 | Deferred migration |
 
 ## Release decision
 
