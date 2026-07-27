@@ -11,11 +11,11 @@ function process_mapping_template_catalog(): array
             'purpose' => 'Coordinate local demand, shared procurement, supplier collaboration, receiving, invoice matching, payment, and reconciliation.',
             'modules' => ['demand','purchase_orders','supplier_portal','fulfillment','accounts_payable'],
             'lanes' => [
-                ['code'=>'requesting_business','name'=>'Requesting Business','participant_type'=>'entity','entity_code'=>'GPS','role_code'=>'requester'],
-                ['code'=>'shared_procurement','name'=>'Shared Procurement','participant_type'=>'entity','entity_code'=>'SHARED-PROC','role_code'=>'procurement_manager'],
+                ['code'=>'requesting_business','name'=>'Requesting Business','participant_type'=>'entity','entity_code'=>'COMP-GPS','role_code'=>'requester'],
+                ['code'=>'shared_procurement','name'=>'Shared Procurement','participant_type'=>'entity','entity_code'=>'GRUBER-PROCUREMENT','role_code'=>'procurement_manager'],
                 ['code'=>'supplier','name'=>'Supplier','participant_type'=>'external','entity_code'=>null,'role_code'=>'supplier'],
-                ['code'=>'receiving_business','name'=>'Receiving Business','participant_type'=>'entity','entity_code'=>'GPS','role_code'=>'receiver'],
-                ['code'=>'shared_finance','name'=>'Shared Finance / AP','participant_type'=>'entity','entity_code'=>'SHARED-FIN','role_code'=>'reviewer'],
+                ['code'=>'receiving_business','name'=>'Receiving Business','participant_type'=>'entity','entity_code'=>'COMP-GPS','role_code'=>'receiver'],
+                ['code'=>'shared_finance','name'=>'Shared Finance / AP','participant_type'=>'entity','entity_code'=>'GRUBER-ACCOUNTS-PAYABLE','role_code'=>'reviewer'],
             ],
             'steps' => [
                 ['code'=>'start','name'=>'Purchase need identified','type'=>'start','lane'=>'requesting_business','x'=>220,'y'=>70,'permission'=>'platform.view','sla'=>0,'evidence'=>false,'record'=>'purchase_requisition'],
