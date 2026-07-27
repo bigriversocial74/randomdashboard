@@ -11,8 +11,12 @@ define('PROJECT_ROOT', $projectRoot);
 
 $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/app/index.php'));
 $appMarker = strpos($scriptName, '/app/');
+$portalMarker = strpos($scriptName, '/supplier-portal/');
 if ($appMarker !== false) {
     $rootUrl = substr($scriptName, 0, $appMarker);
+    $appUrl = $rootUrl . '/app';
+} elseif ($portalMarker !== false) {
+    $rootUrl = substr($scriptName, 0, $portalMarker);
     $appUrl = $rootUrl . '/app';
 } elseif (str_ends_with($scriptName, '/app')) {
     $rootUrl = substr($scriptName, 0, -4);
