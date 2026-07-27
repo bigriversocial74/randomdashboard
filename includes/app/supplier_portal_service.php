@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+function supplier_portal_po_buyer_id(array $po): int
+{
+    return max(1,(int)($po['buyer_id']??$po['buyer_user_id']??current_user()['id']??1));
+}
+
 function supplier_portal_invoice_duplicate(int $supplierId,string $invoiceNumber,float $totalAmount,?int $excludeSubmissionId=null): bool
 {
     foreach(supplier_portal_invoice_submissions($supplierId) as $submission){
@@ -59,7 +64,7 @@ function supplier_portal_apply_asn(array $asn,string $note): void
     $po=fulfillment_find_order((int)$asn['purchase_order_id']);if(!$po||(int)$po['supplier_id']!==(int)$asn['supplier_id'])throw new RuntimeException('The ASN does not match the canonical purchase order.');
     $profile=fulfillment_profile_for_po((int)$po['id'])??[];
     $saved=fulfillment_save_profile(array_replace($profile,[
-        'purchase_order_id'=>(int)$po['id'],'owner_id'=>(int)($profile['owner_id']??$po['buyer_id']??current_user()['id']),
+        'purchase_order_id'=>(int)$po['id'],'owner_id'=>(int)($profile['owner_id']??supplier_portal_po_buyer_id($po)),
         'reviewer_id'=>(int)($profile['reviewer_id']??current_user()['id']),'shipment_status'=>'shipped','asn_number'=>$asn['asn_number'],
         'carrier'=>$asn['carrier'],'tracking_number'=>$asn['tracking_number'],'shipment_reference'=>$asn['packing_slip_reference'],
         'fulfillment_evidence'=>$note.' Estimated arrival '.$asn['estimated_arrival'].'.',
