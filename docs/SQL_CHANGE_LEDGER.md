@@ -167,11 +167,25 @@ Deferred migration:
 - Required import order: Version 3 schema, Sections 11 through 21, then the Section 22 migration.
 - Existing installation behavior before import: internal canonical procurement records remain readable and isolated Demo Mode supplier collaboration remains available; Production supplier identities, invitations, grants, submissions, reviews, canonical conversions, messages, exports, and events are intentionally blocked until all thirteen Section 22 tables exist.
 
+## Section 23 — Accounts Payable, Payment Execution, Cash Forecast & Financial Close Governance
+
+Deferred migration:
+
+`database/20260727_section23_accounts_payable_payment_close_governance.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11 through Section 22 migrations, especially Section 18 canonical supplier invoices and Section 22 supplier-facing collaboration.
+- Purpose: preserves `supplier_invoices` as the canonical invoice record while adding payment schedules, dual-controlled payment batches and items, finance-validated supplier credits, verified external payment-instruction references, adapter-gated execution evidence, supplier-visible remittances, independent reconciliations, accounting periods, GRNI accruals, close certifications, and immutable AP governance events.
+- Security boundary: stores no raw bank-account or routing credentials, permits no autonomous bank transmission, prevents direct invoice-to-paid shortcuts, blocks duplicate active batch inclusion, and separates preparation, review, approval, release, reconciliation, accrual approval, and period-close duties.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS`, `INSERT IGNORE`, unique execution keys, and an idempotent `schema_migrations` record; the Section 23 workflow imports this migration twice on MySQL 8.0 and MariaDB 10.11.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Sections 11 through 22, then the Section 23 migration.
+- Existing installation behavior before import: canonical invoices and prior procurement records remain readable and Demo Mode AP governance remains available; Production payment schedules, batches, credits, instruction references, execution evidence, remittances, reconciliations, accruals, close certifications, exports, and events are intentionally blocked until all twelve Section 23 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
-- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 → Section 20 → Section 21 → Section 22 order.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 → Section 20 → Section 21 → Section 22 → Section 23 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.
