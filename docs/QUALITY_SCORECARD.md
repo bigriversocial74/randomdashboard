@@ -28,6 +28,7 @@
 | 24 | Modular business entities, organizational hierarchy, templates, data authority, and integration foundation | 2.4/10 | 10/10 | Deferred migration |
 | 25 | Visual process mapping, workflow orchestration, live instances, controls, and process intelligence | 2.3/10 | 10/10 | Deferred migration |
 | 26 | Enterprise work management, exception command center, SLA escalation, automation rules, and operational intelligence | 2.2/10 | 10/10 | Deferred migration |
+| 27 | Operational calendar, notifications, workload capacity, delegation, digests, and operating cadence | 2.1/10 | 10/10 | Deferred migration |
 
 ## Release decision
 

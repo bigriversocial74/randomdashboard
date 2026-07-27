@@ -42,10 +42,12 @@ php tests/section25_render.php
 php tests/sections24_25_integration_audit.php
 php tests/section26_work_management.php
 php tests/section26_render.php
+php tests/section27_operational_calendar.php
+php tests/section27_render.php
 
 pages=(
   dashboard.php briefing.php reports.php spend-strategy.php supplier-portal.php accounts-payable.php suppliers.php sourcing.php scenarios.php mitigations.php executions.php performance.php contracts.php demand.php fulfillment.php items.php purchase-orders.php inventory.php inventory-operations.php
-  scorecards.php imports.php discovery.php data-collection.php savings.php savings-realization.php approvals.php notifications.php work-management.php
+  scorecards.php imports.php discovery.php data-collection.php savings.php savings-realization.php approvals.php notifications.php work-management.php operational-calendar.php
   agent.php tour.php profile.php settings.php change-password.php admin/index.php admin/users.php
   admin/roles.php admin/companies.php admin/access-requests.php admin/sessions.php admin/security.php
   admin/audit.php admin/settings.php admin/environment.php
@@ -64,8 +66,8 @@ if grep -R -nE "Open Installer|\$env\['installer'\]|simulated a password-reset|r
   exit 1
 fi
 
-for report in docs/SECTION_{1..26}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md docs/SECTIONS_24_25_INTEGRATION_AUDIT.md; do
+for report in docs/SECTION_{1..27}_QUALITY_REPORT.md docs/QUALITY_SCORECARD.md docs/SQL_CHANGE_LEDGER.md docs/SECTIONS_24_25_INTEGRATION_AUDIT.md; do
   [[ -f "$report" ]] || { echo "Missing quality evidence: $report" >&2; exit 1; }
 done
 
-echo "All Sections 1-26 and Sections 24-25 integration audit quality gates passed."
+echo "All Sections 1-27 and Sections 24-25 integration audit quality gates passed."
