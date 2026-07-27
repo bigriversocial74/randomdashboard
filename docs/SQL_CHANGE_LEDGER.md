@@ -153,11 +153,25 @@ Deferred migration:
 - Required import order: Version 3 schema, Sections 11 through 20, then the Section 21 migration.
 - Existing installation behavior before import: canonical operational records remain readable and Demo Mode strategy governance remains available; Production Data snapshot, classification, strategy, plan, target, event, approval, and lock writes are intentionally blocked until all seven Section 21 tables exist.
 
+## Section 22 — Supplier Portal, Digital Collaboration & External Document Exchange
+
+Deferred migration:
+
+`database/20260727_section22_supplier_portal_collaboration_exchange.sql`
+
+- Dependencies: corrected Version 3 schema and the Section 11 through Section 21 migrations, including Section 18 canonical supplier-invoice tables.
+- Purpose: preserves suppliers, supplier contacts, purchase orders, purchase-order lines, fulfillment records, canonical invoices, sourcing decisions, scorecards, quality events, contracts, and approvals while adding isolated supplier identities, expiring invitations, company/capability grants, staged PO responses, advance shipment notices and lines, staged invoice submissions and lines, controlled document references, competitor-isolated sourcing proposals, quality responses, supplier-visible messages, and immutable supplier portal events.
+- Security boundary: supplier accounts are not internal users, roles, memberships, or company-switcher identities; supplier records are tenant-scoped and cannot directly modify receipts, canonical invoices, match results, payment release, quality closure, internal scoring, competitor proposals, savings, or strategy data.
+- Idempotency: uses `CREATE TABLE IF NOT EXISTS`, `INSERT IGNORE`, and an idempotent `schema_migrations` record; the Section 22 workflow imports this migration twice on MySQL 8.0 and MariaDB 10.11.
+- Compatibility gate: MySQL 8.0 and MariaDB 10.11 cumulative import tests are required before merge.
+- Required import order: Version 3 schema, Sections 11 through 21, then the Section 22 migration.
+- Existing installation behavior before import: internal canonical procurement records remain readable and isolated Demo Mode supplier collaboration remains available; Production supplier identities, invitations, grants, submissions, reviews, canonical conversions, messages, exports, and events are intentionally blocked until all thirteen Section 22 tables exist.
+
 The user will import the deferred migrations together during the final deployment window. Do not import the fresh-install Version 3 schema into an already populated database.
 
 ## Deployment rule
 
 - Never import the fresh-install schema into a populated production database.
 - Keep `config.php` outside deployment packages and repository commits.
-- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 → Section 20 → Section 21 order.
+- Import the deferred migrations in strict Section 11 → Section 12 → Section 13 → Section 14 → Section 15 → Section 16 → Section 17 → Section 18 → Section 19 → Section 20 → Section 21 → Section 22 order.
 - If a future section introduces SQL, record the migration filename, dependencies, idempotency, MySQL/MariaDB validation, and required import order in this ledger.
