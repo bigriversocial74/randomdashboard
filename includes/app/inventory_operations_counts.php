@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+
+function inventory_ops_cycle_count_variance(array $line): float {return (float)($line['counted_quantity']??0)-(float)$line['system_quantity'];}
+function inventory_ops_cycle_count_value(array $line): float {$position=null;foreach(inventory_ops_positions() as $p)if((int)$p['item_id']===(int)$line['item_id']){$position=$p;break;}return abs(inventory_ops_cycle_count_variance($line))*(float)($position['unit_cost']??0);}
+
+function inventory_ops_submit_cycle_count(array $count): array
+{
+    $lines=inventory_ops_cycle_count_lines((int)$count['id']);if(!$lines)throw new RuntimeException('Add at least one count line.');foreach($lines as $line)if($line['counted_quantity']===null||$line['counted_quantity']==='')throw new RuntimeException('Every count line requires a counted quantity.');$value=array_sum(array_map('inventory_ops_cycle_count_value',$lines));$approval=data_upsert('workflow_approvals',['id'=>null,'company_id'=>inventory_ops_location_company((int)$count['inventory_location_id']),'module'=>'inventory','entity_type'=>'cycle_count','entity_id'=>$count['id'],'title'=>$count['count_reference'].' · '.money($value).' absolute variance','submitted_by'=>(int)current_user()['id'],'assigned_to'=>6,'status'=>'pending','submitted_at'=>date('Y-m-d H:i:s'),'due_date'=>date('Y-m-d',strtotime('+2 days')),'notes'=>'Review blind count evidence, quantity and value variances, reason codes, repeated variance risk, custody, and adjustment authorization.']);$before=$count['status'];$count['status']='submitted';$saved=inventory_ops_save_cycle_count($count);inventory_ops_add_event(inventory_ops_location_company((int)$count['inventory_location_id']),(int)$count['inventory_location_id'],(int)$lines[0]['item_id'],'cycle_count',(int)$count['id'],'submitted',$before,'submitted',$value>=1000?'high':'medium',0,$value,'Cycle count routed for approval #'.$approval['id'].'.');return $saved;
+}
+
+function inventory_ops_cycle_count_approval(int $countId): ?array
+{
+    $latest=null;foreach(data_collection('workflow_approvals') as $approval)if((string)($approval['entity_type']??'')==='cycle_count'&&(int)($approval['entity_id']??0)===$countId){if(!$latest||strcmp((string)($approval['submitted_at']??''),(string)($latest['submitted_at']??''))>0)$latest=$approval;}return $latest;
+}
+
+function inventory_ops_post_cycle_count(array $count,string $evidence): array
+{
+    $approval=inventory_ops_cycle_count_approval((int)$count['id']);if(!$approval||(string)$approval['status']!=='approved')throw new RuntimeException('The cycle count must be approved before posting.');foreach(inventory_ops_cycle_count_lines((int)$count['id']) as $line){$variance=inventory_ops_cycle_count_variance($line);if(abs($variance)<0.0001)continue;$position=inventory_ops_find_position((int)$count['inventory_location_id'],(int)$line['item_id']);$unitCost=(float)($position['unit_cost']??0);inventory_ops_update_balance((int)$count['inventory_location_id'],(int)$line['item_id'],$variance,0,$unitCost);inventory_ops_add_transaction(['id'=>null,'item_id'=>$line['item_id'],'from_inventory_location_id'=>$variance<0?$count['inventory_location_id']:null,'to_inventory_location_id'=>$variance>0?$count['inventory_location_id']:null,'project_workorder_id'=>null,'transaction_type'=>'cycle_count','quantity'=>abs($variance),'unit_cost'=>$unitCost,'reason_code'=>'approved_count_variance','reference_type'=>'cycle_count','reference_id'=>$count['id'],'notes'=>$evidence.' '.$line['variance_reason']]);inventory_ops_add_event(inventory_ops_location_company((int)$count['inventory_location_id']),(int)$count['inventory_location_id'],(int)$line['item_id'],'cycle_count',(int)$count['id'],'variance_posted','approved','posted',abs($variance)*$unitCost>=1000?'high':'medium',$variance,abs($variance)*$unitCost,$evidence);}$before=$count['status'];$count['status']='posted';$count['completed_date']=date('Y-m-d');$count['approved_by']=(int)current_user()['id'];$saved=inventory_ops_save_cycle_count($count);inventory_ops_add_event(inventory_ops_location_company((int)$count['inventory_location_id']),(int)$count['inventory_location_id'],(int)(inventory_ops_cycle_count_lines((int)$count['id'])[0]['item_id']??0),'cycle_count',(int)$count['id'],'posted',$before,'posted','medium',0,0,$evidence);return $saved;
+}
+
+function inventory_ops_controlled_movement(int $locationId,int $itemId,string $type,float $quantity,?int $projectId,string $evidence): array
+{
+    $allowed=['issue','return_to_stock','return_to_supplier','adjustment','scrap','core_return','donor_harvest','refurbish','sale'];if(!in_array($type,$allowed,true))throw new RuntimeException('Select a supported controlled movement.');if($quantity<=0)throw new RuntimeException('Movement quantity must be greater than zero.');$position=inventory_ops_find_position($locationId,$itemId);$unitCost=(float)($position['unit_cost']??data_find('items',$itemId)['standard_cost']??0);$inbound=in_array($type,['return_to_stock','refurbish'],true);if(!$inbound&&(!$position||(float)$position['available']+0.0001<$quantity))throw new RuntimeException('Available inventory is insufficient for this movement.');inventory_ops_update_balance($locationId,$itemId,$inbound?$quantity:-$quantity,0,$unitCost);$transaction=inventory_ops_add_transaction(['id'=>null,'item_id'=>$itemId,'from_inventory_location_id'=>$inbound?null:$locationId,'to_inventory_location_id'=>$inbound?$locationId:null,'project_workorder_id'=>$projectId,'transaction_type'=>$type,'quantity'=>$quantity,'unit_cost'=>$unitCost,'reason_code'=>$type,'reference_type'=>'inventory_governance','reference_id'=>null,'notes'=>$evidence]);$companyId=inventory_ops_location_company($locationId);inventory_ops_add_event($companyId,$locationId,$itemId,'inventory_transaction',(int)$transaction['id'],$type,null,'posted',in_array($type,['scrap','adjustment'],true)?'high':'medium',$inbound?$quantity:-$quantity,$quantity*$unitCost,$evidence);return $transaction;
+}
+
+function inventory_ops_metrics(): array
+{
+    $positions=inventory_ops_positions();$reservations=inventory_ops_reservations();$transfers=inventory_ops_transfers();$recommendations=inventory_ops_recommendations();$counts=inventory_ops_cycle_counts();$stockout=0;$excess=0.0;foreach(inventory_ops_policies() as $policy){$position=inventory_ops_find_position((int)$policy['inventory_location_id'],(int)$policy['item_id']);$available=(float)($position['available']??0);if($available<(float)$policy['safety_stock'])$stockout++;if($available>(float)$policy['maximum_quantity']&&$policy['maximum_quantity']>0)$excess+=($available-(float)$policy['maximum_quantity'])*(float)($position['unit_cost']??0);}return ['inventory_value'=>array_sum(array_column($positions,'value')),'available_quantity'=>array_sum(array_column($positions,'available')),'active_reservations'=>count(array_filter($reservations,static fn(array $r):bool=>(string)$r['status']==='active')),'reserved_quantity'=>array_sum(array_map(static fn(array $r):float=>(string)$r['status']==='active'?(float)$r['quantity']:0,$reservations)),'open_transfers'=>count(array_filter($transfers,static fn(array $r):bool=>!in_array((string)$r['status'],['received','canceled'],true))),'replenishment_value'=>array_sum(array_map(static fn(array $r):float=>in_array(inventory_ops_recommendation_effective_status($r),['draft','submitted','pending','in_review','approved'],true)?(float)$r['estimated_value']:0,$recommendations)),'stockout_risks'=>$stockout,'excess_value'=>$excess,'open_counts'=>count(array_filter($counts,static fn(array $c):bool=>!in_array((string)$c['status'],['posted','canceled'],true)))];
+}
+
+function inventory_ops_notify(int $userId,int $companyId,string $title,string $message,string $severity='info'): void
+{
+    data_upsert('notifications',['id'=>null,'user_id'=>$userId,'company_id'=>$companyId,'title'=>$title,'message'=>$message,'severity'=>$severity,'module'=>'inventory','entity_id'=>null,'read'=>false,'created_at'=>date('Y-m-d H:i:s')]);
+}
+
+function inventory_ops_csv_cell(mixed $value): string
+{
+    $text=(string)$value;if($text!==''&&in_array($text[0],['=','+','-','@'],true))$text="'".$text;return $text;
+}
