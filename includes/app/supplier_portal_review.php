@@ -12,7 +12,7 @@ function supplier_portal_apply_invoice_submission(array $submission,string $note
         'contract_id'=>null,'invoice_date'=>$submission['invoice_date'],'due_date'=>$submission['due_date'],'payment_terms'=>$po['payment_terms']??'',
         'currency_code'=>$submission['currency_code'],'subtotal'=>(float)$submission['subtotal'],'freight_amount'=>(float)$submission['freight_amount'],
         'tax_amount'=>(float)$submission['tax_amount'],'total_amount'=>(float)$submission['total_amount'],'document_path'=>$submission['document_reference'],
-        'status'=>'received','owner_id'=>(int)($po['buyer_id']??current_user()['id']),'reviewer_id'=>(int)current_user()['id'],'approval_id'=>null,
+        'status'=>'received','owner_id'=>supplier_portal_po_buyer_id($po),'reviewer_id'=>(int)current_user()['id'],'approval_id'=>null,
         'hold_reason'=>'Supplier portal submission requires three-way match. '.$note,'released_at'=>null,'paid_at'=>null,
     ]);
     foreach(supplier_portal_invoice_lines((int)$submission['id']) as $line){
