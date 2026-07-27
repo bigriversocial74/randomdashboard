@@ -1,0 +1,128 @@
+name: Sections 24-25 Entity and Process Integration Audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  php-audit:
+    name: PHP ${{ matrix.php }} integration audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1','8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run cumulative and adversarial audit gates
+        id: audit
+        continue-on-error: true
+        run: tests/run-quality.sh > /tmp/sections24-25-audit.log 2>&1
+      - name: Upload failed audit output
+        if: steps.audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sections24-25-audit-php-${{ matrix.php }}
+          path: /tmp/sections24-25-audit.log
+          if-no-files-found: error
+      - name: Fail unsuccessful audit
+        if: steps.audit.outcome == 'failure'
+        run: tail -n 600 /tmp/sections24-25-audit.log && exit 1
+      - name: Print successful audit
+        if: steps.audit.outcome == 'success'
+        run: cat /tmp/sections24-25-audit.log
+
+  mysql-audit:
+    name: MySQL 8 entity-process integrity
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and repeat Sections 24-25
+        run: |
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+          )
+          for file in "${files[@]}"; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_entity_company_bindings" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(DISTINCT company_id) FROM gruber_test.business_entity_company_bindings" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_process_assignments WHERE process_id=(SELECT id FROM gruber_test.business_processes WHERE process_code='PROC-P2P')" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_process_lanes l JOIN gruber_test.business_process_versions v ON v.id=l.version_id JOIN gruber_test.business_processes p ON p.id=v.process_id JOIN gruber_test.business_entities e ON e.id=l.entity_id WHERE p.process_code='PROC-P2P' AND ((l.lane_code IN('requesting_business','receiving_business') AND e.entity_code='COMP-GPS') OR (l.lane_code='shared_procurement' AND e.entity_code='GRUBER-PROCUREMENT') OR (l.lane_code='shared_finance' AND e.entity_code='GRUBER-ACCOUNTS-PAYABLE'))" | grep -qx '4'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('5.3-section24','5.4-section25')" | grep -qx '2'
+
+  mariadb-audit:
+    name: MariaDB 10.11 entity-process integrity
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and repeat Sections 24-25
+        run: |
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+          )
+          for file in "${files[@]}"; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_entity_company_bindings" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(DISTINCT company_id) FROM gruber_test.business_entity_company_bindings" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_process_assignments WHERE process_id=(SELECT id FROM gruber_test.business_processes WHERE process_code='PROC-P2P')" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.business_process_lanes l JOIN gruber_test.business_process_versions v ON v.id=l.version_id JOIN gruber_test.business_processes p ON p.id=v.process_id JOIN gruber_test.business_entities e ON e.id=l.entity_id WHERE p.process_code='PROC-P2P' AND ((l.lane_code IN('requesting_business','receiving_business') AND e.entity_code='COMP-GPS') OR (l.lane_code='shared_procurement' AND e.entity_code='GRUBER-PROCUREMENT') OR (l.lane_code='shared_finance' AND e.entity_code='GRUBER-ACCOUNTS-PAYABLE'))" | grep -qx '4'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version IN ('5.3-section24','5.4-section25')" | grep -qx '2'
