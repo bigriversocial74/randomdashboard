@@ -56,7 +56,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
       - name: Import cumulative schema and Section 27 twice
+        id: database
+        continue-on-error: true
         run: |
+          exec > >(tee /tmp/section27-mysql.log) 2>&1
+          set -euo pipefail
           files=(
             database/gruber_ai_procurement_single_install_v3.sql
             database/20260726_section11_supplier_comparison.sql
@@ -78,13 +82,23 @@ jobs:
             database/20260727_section27_operational_calendar_notifications_capacity.sql
             database/20260727_section27_operational_calendar_notifications_capacity.sql
           )
-          for file in "${files[@]}"; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_calendar_events','enterprise_notification_preferences','enterprise_notification_queue','enterprise_capacity_profiles','enterprise_delegations','enterprise_digest_runs','enterprise_calendar_subscriptions','enterprise_operating_cadences')" | grep -qx '8'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'operational_calendar.%'" | grep -qx '8'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_operating_cadences" | grep -qx '3'
           test "$(mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_events")" -gt 0
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_subscriptions WHERE token_hash=token_prefix" | grep -qx '0'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.6-section27'" | grep -qx '1'
+      - name: Upload failed MySQL output
+        if: steps.database.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section27-mysql-8-failure
+          path: /tmp/section27-mysql.log
+          if-no-files-found: error
+      - name: Fail unsuccessful MySQL gate
+        if: steps.database.outcome == 'failure'
+        run: tail -n 500 /tmp/section27-mysql.log && exit 1
 
   mariadb-section-27:
     name: MariaDB 10.11 cumulative and repeat-safe migration
@@ -101,7 +115,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
       - name: Import cumulative schema and Section 27 twice
+        id: database
+        continue-on-error: true
         run: |
+          exec > >(tee /tmp/section27-mariadb.log) 2>&1
+          set -euo pipefail
           files=(
             database/gruber_ai_procurement_single_install_v3.sql
             database/20260726_section11_supplier_comparison.sql
@@ -123,10 +141,20 @@ jobs:
             database/20260727_section27_operational_calendar_notifications_capacity.sql
             database/20260727_section27_operational_calendar_notifications_capacity.sql
           )
-          for file in "${files[@]}"; do mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_calendar_events','enterprise_notification_preferences','enterprise_notification_queue','enterprise_capacity_profiles','enterprise_delegations','enterprise_digest_runs','enterprise_calendar_subscriptions','enterprise_operating_cadences')" | grep -qx '8'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'operational_calendar.%'" | grep -qx '8'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_operating_cadences" | grep -qx '3'
           test "$(mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_events")" -gt 0
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_calendar_subscriptions WHERE token_hash=token_prefix" | grep -qx '0'
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.6-section27'" | grep -qx '1'
+      - name: Upload failed MariaDB output
+        if: steps.database.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section27-mariadb-10-11-failure
+          path: /tmp/section27-mariadb.log
+          if-no-files-found: error
+      - name: Fail unsuccessful MariaDB gate
+        if: steps.database.outcome == 'failure'
+        run: tail -n 500 /tmp/section27-mariadb.log && exit 1
