@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__).'/includes/app/bootstrap.php';
-require_once dirname(__DIR__).'/includes/app/executive_intelligence.php';
+require_once dirname(__DIR__).'/includes/app/executive_intelligence_governance.php';
 require_app_user();
 if(request_method()!=='POST'){http_response_code(405);exit('Method not allowed.');}
 verify_csrf();$action=post_string('action');$return='executive-command.php';
@@ -17,9 +17,9 @@ try{
         executive_intelligence_save_version(['id'=>null,'definition_id'=>$definition['id'],'version_number'=>'1.0','status'=>'draft','calculation_method'=>'Deterministic aggregation of approved visible records using metric '.$metricKey.'.','calculation_json'=>json_encode(['metric_key'=>$metricKey,'process_id'=>$definition['process_id'],'process_step_id'=>$definition['process_step_id'],'scope'=>'approved_visible_records'],JSON_UNESCAPED_SLASHES),'unit'=>$catalog[$metricKey]['unit'],'direction'=>post_string('direction',$catalog[$metricKey]['direction']),'target_value'=>(float)post_string('target_value','0'),'warning_value'=>(float)post_string('warning_value','0'),'critical_value'=>(float)post_string('critical_value','0'),'prepared_by'=>(int)current_user()['id'],'reviewed_by'=>post_int('reviewed_by'),'approved_by'=>post_int('approved_by'),'review_note'=>'','approval_note'=>'','evidence_note'=>mb_substr(post_string('evidence_note'),0,5000),'effective_from'=>date('Y-m-d'),'published_at'=>null,'locked_at'=>null]);
         flash('success','Draft KPI definition created with governed process binding. The assigned reviewer and approver must complete publication.');$return.='?tab=kpis';
     }elseif($action==='review_kpi_version'){
-        require_permission('executive_intelligence.review');executive_intelligence_review_version(post_int('version_id'),post_string('note'));flash('success','KPI methodology independently reviewed.');$return.='?tab=kpis';
+        executive_intelligence_review_version(post_int('version_id'),post_string('note'));flash('success','KPI methodology independently reviewed.');$return.='?tab=kpis';
     }elseif($action==='publish_kpi_version'){
-        executive_intelligence_publish_version(post_int('version_id'),post_string('note'));flash('success','KPI version published and permanently locked.');$return.='?tab=kpis';
+        executive_intelligence_assert_publishable_version(post_int('version_id'));executive_intelligence_publish_version(post_int('version_id'),post_string('note'));flash('success','KPI version published and permanently locked.');$return.='?tab=kpis';
     }elseif($action==='snapshot_all'){
         require_permission('executive_intelligence.snapshot');$rows=executive_intelligence_generate_all_snapshots();flash('success',count($rows).' governed KPI snapshots generated or replayed safely.');$return.='?tab=kpis';
     }elseif($action==='create_scorecard'){
