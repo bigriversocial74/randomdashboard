@@ -29,6 +29,7 @@
 | 25 | Visual process mapping, workflow orchestration, live instances, controls, and process intelligence | 2.3/10 | 10/10 | Deferred migration |
 | 26 | Enterprise work management, exception command center, SLA escalation, automation rules, and operational intelligence | 2.2/10 | 10/10 | Deferred migration |
 | 27 | Operational calendar, notifications, workload capacity, delegation, digests, and operating cadence | 2.1/10 | 10/10 | Deferred migration |
+| 28 | Executive Command Center, goals, process-aware KPI governance, scorecards, forecasting, reviews, and governed decisions | 2.0/10 | 10/10 | Deferred migration |
 
 ## Release decision
 
