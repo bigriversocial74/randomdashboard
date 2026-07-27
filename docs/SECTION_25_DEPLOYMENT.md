@@ -1,0 +1,3 @@
+# Section 25 Deployment
+
+Import `database/20260727_section25_process_mapping_orchestration_control_intelligence.sql` only after the corrected Version 3 schema and deferred Sections 11–24 migrations. The migration is repeat-safe on MySQL 8 and MariaDB 10.11, preserves every canonical company and transaction relationship, and adds only process definitions, visual layouts, assignments, live process references, controls, integrations, exceptions, and immutable process events. Production process writes intentionally fail closed before all twelve Section 25 tables exist. Do not import `database/gruber_ai_procurement_single_install_v3.sql` into a populated production database.
