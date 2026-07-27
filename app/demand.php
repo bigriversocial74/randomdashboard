@@ -4,6 +4,16 @@ require_once dirname(__DIR__) . '/includes/app/bootstrap.php';
 require_once dirname(__DIR__) . '/includes/app/demand_management.php';
 require_permission('purchase_orders.view');
 
+if(!function_exists('data_default_company_id')){
+    function data_default_company_id(array $user): int
+    {
+        $permitted=permitted_company_ids($user);
+        if(current_company_id()!=='enterprise')return (int)current_company_id();
+        $primary=(int)($user['primary_company_id']??0);
+        return in_array($primary,$permitted,true)?$primary:(int)($permitted[0]??0);
+    }
+}
+
 $requestId=query_int('id');$selected=$requestId?demand_find_request($requestId):demand_default_request();
 if($requestId&&!$selected){flash('error','The purchase request is outside the active scope.');redirect_to(app_url('demand.php'));}
 $requests=demand_requests();$lines=$selected?demand_request_lines((int)$selected['id']):[];$assessments=$selected?demand_assessments((int)$selected['id']):[];$assessment=$assessments[0]??[];$events=$selected?demand_events((int)$selected['id']):[];$budgets=demand_budgets();$forecasts=demand_forecasts();$metrics=$selected?demand_metrics($selected,$lines,$assessment):[];
