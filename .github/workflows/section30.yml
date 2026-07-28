@@ -1,0 +1,182 @@
+name: Section 30 Policy Knowledge and Change Adoption
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  section-30-quality:
+    name: PHP ${{ matrix.php }} cumulative quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1','8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run cumulative Sections 1-30 gates
+        id: quality
+        continue-on-error: true
+        run: tests/run-quality.sh > /tmp/section30-quality.log 2>&1
+      - name: Publish failed quality output
+        if: steps.quality.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section30-quality-php-${{ matrix.php }}
+          path: /tmp/section30-quality.log
+          if-no-files-found: error
+      - name: Fail unsuccessful quality gate
+        if: steps.quality.outcome == 'failure'
+        run: tail -n 1400 /tmp/section30-quality.log && exit 1
+      - name: Print successful quality output
+        if: steps.quality.outcome == 'success'
+        run: cat /tmp/section30-quality.log
+
+  mysql-8-section-30:
+    name: MySQL 8 cumulative and repeat-safe migration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 30 twice
+        id: database
+        continue-on-error: true
+        run: |
+          exec > >(tee /tmp/section30-mysql.log) 2>&1
+          set -euo pipefail
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_section26_enterprise_work_management_command_center.sql
+            database/20260727_section27_operational_calendar_notifications_capacity.sql
+            database/20260727_section28_executive_command_goals_performance.sql
+            database/20260727_section29_strategy_portfolio_initiative_benefits.sql
+            database/20260727_section30_policy_sop_knowledge_adoption.sql
+            database/20260727_section30_policy_sop_knowledge_adoption.sql
+          )
+          for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_policy_documents','enterprise_policy_versions','enterprise_policy_links','enterprise_change_impacts','enterprise_training_campaigns','enterprise_training_assignments','enterprise_training_attestations','enterprise_policy_waivers','enterprise_adoption_snapshots','enterprise_policy_evidence_manifests')" | grep -qx '10'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'knowledge_adoption.%'" | grep -qx '13'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_policy_versions' AND column_name IN ('content_hash','source_initiative_id','process_id','process_version_id','process_step_id')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_training_assignments' AND column_name IN ('work_item_id','calendar_event_id','process_instance_id','step_instance_id','source_key')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_documents WHERE owner_user_id=reviewer_user_id OR owner_user_id=approver_user_id OR reviewer_user_id=approver_user_id" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_versions WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by OR (effective_to IS NOT NULL AND effective_to<effective_from)" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_versions WHERE status='published' AND (CHAR_LENGTH(content_hash)<>64 OR published_at IS NULL OR locked_at IS NULL OR review_note='' OR approval_note='')" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_change_impacts WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by OR (status='approved' AND (approved_at IS NULL OR locked_at IS NULL))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_training_campaigns WHERE owner_user_id=reviewer_user_id OR owner_user_id=approver_user_id OR reviewer_user_id=approver_user_id OR required_score>100" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_training_attestations WHERE submitted_by=validator_user_id OR quiz_score<0 OR quiz_score>100 OR (status='validated' AND (validated_at IS NULL OR locked_at IS NULL OR validation_note=''))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_waivers WHERE requested_by=reviewed_by OR requested_by=approved_by OR reviewed_by=approved_by OR expires_at<=requested_at OR (status='approved' AND (approved_at IS NULL OR locked_at IS NULL OR approval_note=''))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_adoption_snapshots WHERE adoption_rate<0 OR adoption_rate>100 OR pass_rate<0 OR pass_rate>100 OR locked_at IS NULL OR snapshot_key=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_evidence_manifests WHERE CHAR_LENGTH(manifest_hash)<>64 OR locked_at IS NULL OR manifest_json=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.9-section30'" | grep -qx '1'
+      - name: Upload failed MySQL output
+        if: steps.database.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section30-mysql-8-failure
+          path: /tmp/section30-mysql.log
+          if-no-files-found: error
+      - name: Fail unsuccessful MySQL gate
+        if: steps.database.outcome == 'failure'
+        run: tail -n 1000 /tmp/section30-mysql.log && exit 1
+
+  mariadb-section-30:
+    name: MariaDB 10.11 cumulative and repeat-safe migration
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 30 twice
+        id: database
+        continue-on-error: true
+        run: |
+          exec > >(tee /tmp/section30-mariadb.log) 2>&1
+          set -euo pipefail
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_section26_enterprise_work_management_command_center.sql
+            database/20260727_section27_operational_calendar_notifications_capacity.sql
+            database/20260727_section28_executive_command_goals_performance.sql
+            database/20260727_section29_strategy_portfolio_initiative_benefits.sql
+            database/20260727_section30_policy_sop_knowledge_adoption.sql
+            database/20260727_section30_policy_sop_knowledge_adoption.sql
+          )
+          for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_policy_documents','enterprise_policy_versions','enterprise_policy_links','enterprise_change_impacts','enterprise_training_campaigns','enterprise_training_assignments','enterprise_training_attestations','enterprise_policy_waivers','enterprise_adoption_snapshots','enterprise_policy_evidence_manifests')" | grep -qx '10'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'knowledge_adoption.%'" | grep -qx '13'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_policy_versions' AND column_name IN ('content_hash','source_initiative_id','process_id','process_version_id','process_step_id')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_training_assignments' AND column_name IN ('work_item_id','calendar_event_id','process_instance_id','step_instance_id','source_key')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_documents WHERE owner_user_id=reviewer_user_id OR owner_user_id=approver_user_id OR reviewer_user_id=approver_user_id" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_versions WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by OR (effective_to IS NOT NULL AND effective_to<effective_from)" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_versions WHERE status='published' AND (CHAR_LENGTH(content_hash)<>64 OR published_at IS NULL OR locked_at IS NULL OR review_note='' OR approval_note='')" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_change_impacts WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by OR (status='approved' AND (approved_at IS NULL OR locked_at IS NULL))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_training_campaigns WHERE owner_user_id=reviewer_user_id OR owner_user_id=approver_user_id OR reviewer_user_id=approver_user_id OR required_score>100" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_training_attestations WHERE submitted_by=validator_user_id OR quiz_score<0 OR quiz_score>100 OR (status='validated' AND (validated_at IS NULL OR locked_at IS NULL OR validation_note=''))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_waivers WHERE requested_by=reviewed_by OR requested_by=approved_by OR reviewed_by=approved_by OR expires_at<=requested_at OR (status='approved' AND (approved_at IS NULL OR locked_at IS NULL OR approval_note=''))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_adoption_snapshots WHERE adoption_rate<0 OR adoption_rate>100 OR pass_rate<0 OR pass_rate>100 OR locked_at IS NULL OR snapshot_key=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_policy_evidence_manifests WHERE CHAR_LENGTH(manifest_hash)<>64 OR locked_at IS NULL OR manifest_json=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.9-section30'" | grep -qx '1'
+      - name: Upload failed MariaDB output
+        if: steps.database.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section30-mariadb-10-11-failure
+          path: /tmp/section30-mariadb.log
+          if-no-files-found: error
+      - name: Fail unsuccessful MariaDB gate
+        if: steps.database.outcome == 'failure'
+        run: tail -n 1000 /tmp/section30-mariadb.log && exit 1
