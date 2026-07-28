@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-$root=dirname(__DIR__);$_SERVER['SCRIPT_NAME']='/gruber/app/knowledge-adoption.php';$_SERVER['REQUEST_METHOD']='GET';$_SERVER['REMOTE_ADDR']='127.0.0.1';$_SERVER['HTTP_USER_AGENT']='Section 30 quality test';require $root.'/includes/app/bootstrap.php';if(!demo_start_session(1)){fwrite(STDERR,"Could not start demo session.\n");exit(1);}require_once $root.'/includes/app/knowledge_adoption_governance.php';$_SESSION['gruber_demo_state']=[];
+$root=dirname(__DIR__);$_SERVER['SCRIPT_NAME']='/gruber/app/knowledge-adoption.php';$_SERVER['REQUEST_METHOD']='GET';$_SERVER['REMOTE_ADDR']='127.0.0.1';$_SERVER['HTTP_USER_AGENT']='Section 30 quality test';require $root.'/includes/app/bootstrap.php';if(!demo_start_session(1)){fwrite(STDERR,"Could not start demo session.\n");exit(1);}require_once $root.'/includes/app/knowledge_adoption_governance.php';$_SESSION['gruber_demo_state']=[];$_SESSION['gruber_demo_user_id']=1;$_SESSION['gruber_demo_company_id']='enterprise';
 function s30(bool$condition,string$message):void{if(!$condition){fwrite(STDERR,"Section 30 failure: {$message}\n");exit(1);}}
 function s30_user(int$id,int|string$company='enterprise'):void{$_SESSION['gruber_demo_user_id']=$id;$_SESSION['gruber_demo_company_id']=$company;}
 function s30_throws(callable$callback,string$message):void{try{$callback();s30(false,$message);}catch(RuntimeException){}}
