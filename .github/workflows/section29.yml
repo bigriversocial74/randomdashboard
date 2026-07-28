@@ -1,0 +1,176 @@
+name: Section 29 Strategy Portfolio and Benefits Realization
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  section-29-quality:
+    name: PHP ${{ matrix.php }} cumulative quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1','8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, fileinfo, simplexml, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run cumulative Sections 1-29 gates
+        id: quality
+        continue-on-error: true
+        run: tests/run-quality.sh > /tmp/section29-quality.log 2>&1
+      - name: Publish failed quality output
+        if: steps.quality.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section29-quality-php-${{ matrix.php }}
+          path: /tmp/section29-quality.log
+          if-no-files-found: error
+      - name: Fail unsuccessful quality gate
+        if: steps.quality.outcome == 'failure'
+        run: tail -n 1200 /tmp/section29-quality.log && exit 1
+      - name: Print successful quality output
+        if: steps.quality.outcome == 'success'
+        run: cat /tmp/section29-quality.log
+
+  mysql-8-section-29:
+    name: MySQL 8 cumulative and repeat-safe migration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 29 twice
+        id: database
+        continue-on-error: true
+        run: |
+          exec > >(tee /tmp/section29-mysql.log) 2>&1
+          set -euo pipefail
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_section26_enterprise_work_management_command_center.sql
+            database/20260727_section27_operational_calendar_notifications_capacity.sql
+            database/20260727_section28_executive_command_goals_performance.sql
+            database/20260727_section29_strategy_portfolio_initiative_benefits.sql
+            database/20260727_section29_strategy_portfolio_initiative_benefits.sql
+          )
+          for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_strategy_portfolios','enterprise_strategic_initiatives','enterprise_initiative_links','enterprise_initiative_stage_gates','enterprise_initiative_funding','enterprise_initiative_milestones','enterprise_initiative_benefits','enterprise_portfolio_scenarios','enterprise_process_change_proposals')" | grep -qx '9'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'portfolio_intelligence.%'" | grep -qx '10'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_strategic_initiatives' AND column_name IN ('primary_goal_id','primary_kpi_definition_id','process_id','process_step_id','budget_envelope_id','savings_opportunity_id')" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_initiative_milestones' AND column_name IN ('work_item_id','calendar_event_id','process_instance_id','step_instance_id','source_key')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_stage_gates WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_stage_gates WHERE status='approved' AND (decision<>'approved' OR approved_at IS NULL OR locked_at IS NULL OR review_note='' OR approval_note='')" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_strategic_initiatives WHERE target_date<start_date OR confidence_pct>100 OR proposed_cost<0 OR forecast_cost<0 OR actual_cost<0 OR expected_annual_benefit<0 OR realized_benefit<0 OR capacity_demand_hours<0" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_funding WHERE approved_amount<0 OR forecast_cost<0 OR idempotency_key=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_benefits WHERE confidence_pct>100 OR (status='validated' AND (validated_at IS NULL OR locked_at IS NULL OR validation_note=''))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_portfolio_scenarios WHERE budget_limit<0 OR capacity_limit_hours<0 OR selected_cost<0 OR selected_benefit<0 OR selected_capacity_hours<0 OR idempotency_key=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_process_change_proposals WHERE process_id IS NULL OR process_version_id IS NULL" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.8-section29'" | grep -qx '1'
+      - name: Upload failed MySQL output
+        if: steps.database.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section29-mysql-8-failure
+          path: /tmp/section29-mysql.log
+          if-no-files-found: error
+      - name: Fail unsuccessful MySQL gate
+        if: steps.database.outcome == 'failure'
+        run: tail -n 800 /tmp/section29-mysql.log && exit 1
+
+  mariadb-section-29:
+    name: MariaDB 10.11 cumulative and repeat-safe migration
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: gruber_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Import cumulative schema and Section 29 twice
+        id: database
+        continue-on-error: true
+        run: |
+          exec > >(tee /tmp/section29-mariadb.log) 2>&1
+          set -euo pipefail
+          files=(
+            database/gruber_ai_procurement_single_install_v3.sql
+            database/20260726_section11_supplier_comparison.sql
+            database/20260726_section12_procurement_scenarios.sql
+            database/20260726_section13_mitigation_action_plans.sql
+            database/20260726_section14_execution_recovery_verification.sql
+            database/20260726_section15_supplier_performance_improvement.sql
+            database/20260726_section16_contract_lifecycle_renewal_governance.sql
+            database/20260727_section17_demand_requisition_budget_governance.sql
+            database/20260727_section18_fulfillment_receiving_invoice_match.sql
+            database/20260727_section19_inventory_operations_replenishment_governance.sql
+            database/20260727_section20_savings_realization_finance_governance.sql
+            database/20260727_section21_enterprise_spend_category_strategy_planning.sql
+            database/20260727_section22_supplier_portal_collaboration_exchange.sql
+            database/20260727_section23_accounts_payable_payment_close_governance.sql
+            database/20260727_section24_business_entity_integration_foundation.sql
+            database/20260727_section25_process_mapping_orchestration_control_intelligence.sql
+            database/20260727_section26_enterprise_work_management_command_center.sql
+            database/20260727_section27_operational_calendar_notifications_capacity.sql
+            database/20260727_section28_executive_command_goals_performance.sql
+            database/20260727_section29_strategy_portfolio_initiative_benefits.sql
+            database/20260727_section29_strategy_portfolio_initiative_benefits.sql
+          )
+          for file in "${files[@]}"; do echo "Importing $file"; mysql --protocol=tcp -h 127.0.0.1 -uroot -proot gruber_test < "$file"; done
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='gruber_test' AND table_name IN ('enterprise_strategy_portfolios','enterprise_strategic_initiatives','enterprise_initiative_links','enterprise_initiative_stage_gates','enterprise_initiative_funding','enterprise_initiative_milestones','enterprise_initiative_benefits','enterprise_portfolio_scenarios','enterprise_process_change_proposals')" | grep -qx '9'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.permissions WHERE permission_key LIKE 'portfolio_intelligence.%'" | grep -qx '10'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_strategic_initiatives' AND column_name IN ('primary_goal_id','primary_kpi_definition_id','process_id','process_step_id','budget_envelope_id','savings_opportunity_id')" | grep -qx '6'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='gruber_test' AND table_name='enterprise_initiative_milestones' AND column_name IN ('work_item_id','calendar_event_id','process_instance_id','step_instance_id','source_key')" | grep -qx '5'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_stage_gates WHERE prepared_by=reviewed_by OR prepared_by=approved_by OR reviewed_by=approved_by" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_stage_gates WHERE status='approved' AND (decision<>'approved' OR approved_at IS NULL OR locked_at IS NULL OR review_note='' OR approval_note='')" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_strategic_initiatives WHERE target_date<start_date OR confidence_pct>100 OR proposed_cost<0 OR forecast_cost<0 OR actual_cost<0 OR expected_annual_benefit<0 OR realized_benefit<0 OR capacity_demand_hours<0" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_funding WHERE approved_amount<0 OR forecast_cost<0 OR idempotency_key=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_initiative_benefits WHERE confidence_pct>100 OR (status='validated' AND (validated_at IS NULL OR locked_at IS NULL OR validation_note=''))" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_portfolio_scenarios WHERE budget_limit<0 OR capacity_limit_hours<0 OR selected_cost<0 OR selected_benefit<0 OR selected_capacity_hours<0 OR idempotency_key=''" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.enterprise_process_change_proposals WHERE process_id IS NULL OR process_version_id IS NULL" | grep -qx '0'
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot -Nse "SELECT COUNT(*) FROM gruber_test.schema_migrations WHERE version='5.8-section29'" | grep -qx '1'
+      - name: Upload failed MariaDB output
+        if: steps.database.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: section29-mariadb-10-11-failure
+          path: /tmp/section29-mariadb.log
+          if-no-files-found: error
+      - name: Fail unsuccessful MariaDB gate
+        if: steps.database.outcome == 'failure'
+        run: tail -n 800 /tmp/section29-mariadb.log && exit 1
