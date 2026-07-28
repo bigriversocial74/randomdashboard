@@ -31,6 +31,7 @@
 | 27 | Operational calendar, notifications, workload capacity, delegation, digests, and operating cadence | 2.1/10 | 10/10 | Deferred migration |
 | 28 | Executive Command Center, goals, process-aware KPI governance, scorecards, forecasting, reviews, and governed decisions | 2.0/10 | 10/10 | Deferred migration |
 | 29 | Enterprise strategy portfolios, governed initiatives, stage gates, budget and capacity allocation, process impact, execution milestones, scenarios, and benefits realization | 1.9/10 | 10/10 | Deferred migration |
+| 30 | Enterprise policy, SOP, controlled knowledge, change impact, training, attestations, waivers, adoption measurement, and evidence manifests | 1.8/10 | 10/10 | Deferred migration |
 
 ## Release decision
 

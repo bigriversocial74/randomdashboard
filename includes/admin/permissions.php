@@ -7,7 +7,7 @@ function permission_catalog():array
         'platform'=>['view','administer'],'users'=>['view','create','edit','delete','assign','administer'],'roles'=>['view','create','edit','delete','assign','administer'],'companies'=>['view','create','edit','delete','assign','administer'],
         'discovery'=>['view','create','edit','delete','assign','submit','review','approve','export'],'suppliers'=>['view','create','edit','delete','assign','submit','review','approve','export'],'supplier_portal'=>['view','invite','review','export','administer'],'accounts_payable'=>['view','create','edit','submit','review','approve','execute','reconcile','close','export'],
         'items'=>['view','create','edit','delete','assign','submit','review','approve','export'],'purchase_orders'=>['view','create','edit','delete','assign','submit','review','approve','export'],'inventory'=>['view','create','edit','delete','assign','submit','review','approve','export'],'savings'=>['view','create','edit','delete','assign','submit','review','approve','export'],'strategy'=>['view','create','edit','assign','submit','review','approve','export'],'scorecards'=>['view','create','edit','delete','assign','submit','review','approve','export'],'imports'=>['view','create','edit','delete','submit','review','approve','export','administer'],'approvals'=>['view','submit','review','approve','administer'],
-        'work_management'=>['view','create','execute','assign','review','approve','analyze','automate','export','administer'],'operational_calendar'=>['view','create','edit','delegate','manage_capacity','manage_notifications','export','administer'],'executive_intelligence'=>['view','create','edit','snapshot','review','approve','export','administer'],'portfolio_intelligence'=>['view','create','edit','submit','review','approve','fund','validate_benefits','export','administer'],'reports'=>['view','export'],'audit'=>['view','export','administer'],'agent'=>['view','administer'],'settings'=>['view','edit','administer'],'security'=>['view','administer'],
+        'work_management'=>['view','create','execute','assign','review','approve','analyze','automate','export','administer'],'operational_calendar'=>['view','create','edit','delegate','manage_capacity','manage_notifications','export','administer'],'executive_intelligence'=>['view','create','edit','snapshot','review','approve','export','administer'],'portfolio_intelligence'=>['view','create','edit','submit','review','approve','fund','validate_benefits','export','administer'],'knowledge_adoption'=>['view','create','edit','submit','review','approve','publish','assign_training','attest','manage_waivers','snapshot','export','administer'],'reports'=>['view','export'],'audit'=>['view','export','administer'],'agent'=>['view','administer'],'settings'=>['view','edit','administer'],'security'=>['view','administer'],
     ];
 }
 function all_permissions():array{$out=[];foreach(permission_catalog()as$area=>$actions)foreach($actions as$action)$out[]=$area.'.'.$action;return$out;}
@@ -36,10 +36,19 @@ function role_permission_defaults():array
         'read_only'=>['view','export'],
     ];
     foreach($portfolio as$role=>$actions)foreach($actions as$action)$defaults[$role][]='portfolio_intelligence.'.$action;
+    $knowledge=[
+        'executive'=>['view','create','edit','submit','review','approve','publish','assign_training','manage_waivers','snapshot','export'],
+        'company_administrator'=>['view','create','edit','submit','review','approve','publish','assign_training','attest','manage_waivers','snapshot','export','administer'],
+        'procurement_manager'=>['view','create','edit','submit','review','approve','publish','assign_training','manage_waivers','snapshot','export'],
+        'data_contributor'=>['view','create','edit','submit','attest','manage_waivers'],
+        'reviewer'=>['view','review','approve','publish','manage_waivers','snapshot','export'],
+        'read_only'=>['view','export'],
+    ];
+    foreach($knowledge as$role=>$actions)foreach($actions as$action)$defaults[$role][]='knowledge_adoption.'.$action;
     foreach($defaults as$role=>$permissions)$defaults[$role]=array_values(array_unique($permissions));
     return$defaults;
 }
-function admin_allowed_company_modules():array{return['discovery','suppliers','supplier_portal','accounts_payable','items','purchase_orders','inventory','savings','strategy','scorecards','imports','work_management','operational_calendar','executive_intelligence','portfolio_intelligence'];}
+function admin_allowed_company_modules():array{return['discovery','suppliers','supplier_portal','accounts_payable','items','purchase_orders','inventory','savings','strategy','scorecards','imports','work_management','operational_calendar','executive_intelligence','portfolio_intelligence','knowledge_adoption'];}
 function admin_normalize_permissions(array$permissions):array{$allowed=array_fill_keys(all_permissions(),true);$normalized=[];foreach($permissions as$permission){$permission=trim((string)$permission);if($permission!==''&&isset($allowed[$permission]))$normalized[$permission]=true;}return array_keys($normalized);}
 function admin_normalize_modules(array$modules):array{$allowed=array_fill_keys(admin_allowed_company_modules(),true);$normalized=[];foreach($modules as$module){$module=trim((string)$module);if($module!==''&&isset($allowed[$module]))$normalized[$module]=true;}return array_keys($normalized);}
 function admin_email_valid(string$email):bool{return$email!==''&&filter_var($email,FILTER_VALIDATE_EMAIL)!==false;}
